@@ -9,6 +9,22 @@
 </head>
 <body>
 
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-box">
+    <div class="logo">€</div>
+    <h2>Budget Foyer</h2>
+    <p class="login-sub">Connectez-vous pour accéder à vos données</p>
+    <form id="loginForm">
+      <input id="loginEmail" type="email" placeholder="Votre email" autocomplete="username" required>
+      <input id="loginPassword" type="password" placeholder="Mot de passe" autocomplete="current-password" required>
+      <button type="submit" class="btn primary" id="loginBtn">Se connecter</button>
+      <div id="loginError" class="login-error"></div>
+    </form>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+
 <header class="topbar">
   <div class="brand">
     <div class="logo">€</div>
@@ -33,6 +49,7 @@
     <span id="syncBadge" class="sync-badge" title="État du stockage de vos ajouts manuels"></span>
     <button id="btnAdd" class="btn primary">＋ Ajouter une opération</button>
     <button id="btnReset" class="btn ghost" title="Effacer vos ajouts personnels">Réinitialiser</button>
+    <button id="btnLogout" class="btn ghost" title="Se déconnecter">Déconnexion</button>
   </div>
 </header>
 
@@ -184,6 +201,8 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
+
+</div>
 
 <script src="data.js"></script>
 <script src="app.js"></script>

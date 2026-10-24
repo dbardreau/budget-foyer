@@ -25,6 +25,42 @@ body{
   line-height:1.5;
 }
 
+/* ===== Écran de connexion ===== */
+.login-overlay{
+  position:fixed;inset:0;z-index:300;
+  display:grid;place-items:center;
+  background:radial-gradient(1000px 500px at 80% -10%, rgba(79,156,249,.14), transparent),
+             var(--bg);
+  padding:20px;
+}
+.login-overlay.hidden{display:none}
+.login-box{
+  width:min(360px,92vw);
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  padding:28px 26px;
+  text-align:center;
+}
+.login-box .logo{
+  width:52px;height:52px;margin:0 auto 14px;
+  display:grid;place-items:center;
+  font-size:26px;font-weight:700;color:#0d1117;
+  background:linear-gradient(135deg,var(--accent),var(--violet));
+  border-radius:14px;
+}
+.login-box h2{font-size:20px;margin-bottom:6px}
+.login-sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+.login-box form{display:flex;flex-direction:column;gap:12px}
+.login-box input{
+  background:var(--bg2);color:var(--text);
+  border:1px solid var(--border);border-radius:10px;
+  padding:11px 12px;font-size:14px;outline:none;
+}
+.login-box input:focus{border-color:var(--accent)}
+.login-error{color:var(--danger);font-size:13px;min-height:18px}
+
 /* ===== Top bar ===== */
 .topbar{
   position:sticky;top:0;z-index:50;

@@ -1,7 +1,7 @@
 /* ============================================================
-   Budget Foyer 2026 — application PHP / MySQL
+   Budget Foyer 2026 — application web (GitHub Pages + Supabase)
    Données de base : window.BUDGET2026 (data.js)
-   Ajouts personnels : base MySQL `budget` (via api.php)
+   Données personnelles : base Supabase (connectée, sécurisée)
    ============================================================ */
 
 /* ---------- Utilitaires ---------- */
@@ -42,13 +42,13 @@ const CATS = [
 
 const REVENUE_SOURCES = ['Salaire David','Salaire Sophie','Aides sociales (CAF)','Autre revenu'];
 
-/* Catégories / sources personnalisées (enregistrées en base MySQL) */
+/* Catégories / sources personnalisées (enregistrées en base Supabase) */
 let customCats = [];
 let customSrc  = [];
 function saveCats(){ saveKey('custom_cats', customCats); }
 function saveSrc(){ saveKey('custom_src', customSrc); }
 
-/* Sous-catégories par catégorie (base MySQL) */
+/* Sous-catégories par catégorie (base Supabase) */
 let subcats = {};
 function saveSubcats(){ saveKey('subcats', subcats); }
 function subsOf(id){ return subcats[id] = subcats[id] || []; }
@@ -86,29 +86,74 @@ const state = { tab:'overview', month:0, year:2026 };
 let editingKey = null; // {mk, id} quand on modifie une opération existante
 
 /* ============================================================
-   STOCKAGE EN BASE DE DONNÉES MYSQL (serveur WAMP)
-   Le site doit être ouvert via http://localhost/... (et non en
-   double-cliquant sur le fichier index.html) pour accéder au
-   serveur api.php.
-   Toutes tes données (ajouts manuels, catégories, sources,
-   sous-catégories) sont enregistrées dans la base MySQL `budget`.
+   STOCKAGE EN BASE DE DONNÉES SUPABASE (cloud)
+   Le site est hébergé sur GitHub Pages et stocke ses données
+   (ajouts manuels, catégories, sources, sous-catégories) dans
+   une base Supabase, protégée par une connexion (email + mot de
+   passe). Toute la synchronisation est asynchrone (Promise).
    ============================================================ */
+const SB_URL = 'https://gcibvyjwxnngbduusccf.supabase.co';
+const SB_KEY = 'sb_publishable_w23iyinmx-9hlTRSROjsLQ_B92OKz4_';
+
 let userOps = {};
 let online = false;
 
-async function apiFetch(body){
-  const opts = body
-    ? { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }
-    : {};
-  const res = await fetch('api.php', opts);
+function sbToken(){ return localStorage.getItem('sb_token') || ''; }
+function sbSession(){
+  return {
+    apikey: SB_KEY,
+    Authorization: 'Bearer ' + sbToken(),
+    'Content-Type': 'application/json',
+  };
+}
+/* Affiche l'écran de connexion et masque l'application */
+function requireLogin(msg){
+  online = false; updateSyncBadge();
+  const ov = document.getElementById('loginOverlay');
+  const app = document.getElementById('app');
+  if(ov) ov.classList.remove('hidden');
+  if(app) app.classList.add('hidden');
+  if(msg){ const er = document.getElementById('loginError'); if(er) er.textContent = msg; }
+}
+/* Connexion à Supabase Auth (email + mot de passe) */
+async function sbLogin(email, password){
+  const res = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', apikey: SB_KEY },
+    body: JSON.stringify({ email, password }),
+  });
+  const d = await res.json();
+  if(!res.ok || !d.access_token){
+    throw new Error(d.error_description || d.msg || 'Échec de la connexion');
+  }
+  localStorage.setItem('sb_token', d.access_token);
+  return d;
+}
+/* Lit toutes les données : renvoie un objet { k : valeur, … } */
+async function sbFetchAll(){
+  const res = await fetch(SB_URL + '/rest/v1/kv?select=k,v', { headers: sbSession() });
+  if(res.status===401 || res.status===403) throw new Error('auth');
   if(!res.ok) throw new Error('Erreur serveur (' + res.status + ')');
-  return await res.json();
+  const rows = await res.json();
+  const out = {};
+  for(const r of rows) out[r.k] = r.v;
+  return out;
+}
+/* Enregistre une clé (upsert) */
+async function sbSave(k, v){
+  const res = await fetch(SB_URL + '/rest/v1/kv', {
+    method:'POST',
+    headers:{ ...sbSession(), Prefer:'resolution=merge-duplicates' },
+    body: JSON.stringify({ k, v }),
+  });
+  if(res.status===401 || res.status===403) throw new Error('auth');
+  if(!res.ok) throw new Error('Erreur serveur (' + res.status + ')');
 }
 
 /* Charge toutes les données depuis la base au démarrage */
 async function initStorage(){
   try{
-    const d = await apiFetch();
+    const d = await sbFetchAll();
     customCats = (d && Array.isArray(d.custom_cats)) ? d.custom_cats : [];
     customSrc  = (d && Array.isArray(d.custom_src))  ? d.custom_src  : [];
     subcats    = (d && d.subcats && typeof d.subcats==='object' && !Array.isArray(d.subcats)) ? d.subcats : {};
@@ -143,8 +188,8 @@ async function initStorage(){
     baseData = newBase;
 
     // Re-sauvegarde au format normalisé (met à jour l'ancien format si besoin)
-    apiFetch({action:'save', k:'base', v:baseData});
-    apiFetch({action:'save', k:'ops', v:userOps});
+    sbSave('base', baseData).catch(()=>{});
+    sbSave('ops', userOps).catch(()=>{});
 
     // Année par défaut : la plus récente présente
     const years = baseYears();
@@ -174,13 +219,12 @@ function changeYear(delta){
   if(y < 2000 || y > 2100) return;             // garde-fou
   if(!baseData[y]){
     baseData[y] = MONTHS.map(emptyMonth);      // invite vide à remplir
-    apiFetch({action:'save', k:'base', v:baseData}).catch(()=>{});
+    sbSave('base', baseData).catch(()=>{});
   }
   state.year = y;
   applyYear();
 }
-function setYearMeta(){
-  const y = String(state.year);
+function setYearMeta(){  const y = String(state.year);
   const el = document.getElementById('yearLabel'); if(el) el.textContent = y;
   const hd = document.getElementById('hdYear');  if(hd) hd.textContent = y;
   const dt = document.getElementById('donutYear'); if(dt) dt.textContent = y;
@@ -189,8 +233,8 @@ function setYearMeta(){
 
 /* Enregistre une clef en base (envoi asynchrone) */
 function saveKey(k, v){
-  apiFetch({action:'save', k, v}).then(()=>{ online = true; updateSyncBadge(); })
-    .catch(()=>{ online = false; updateSyncBadge(); });
+  sbSave(k, v).then(()=>{ online = true; updateSyncBadge(); })
+    .catch(err=>{ online = false; updateSyncBadge(); if(String(err && err.message)==='auth') requireLogin('Session expirée, reconnectez-vous.'); });
 }
 
 function saveOps(){ saveKey('ops', userOps); }
@@ -198,7 +242,7 @@ function saveOps(){ saveKey('ops', userOps); }
 function updateSyncBadge(){
   const el = document.getElementById('syncBadge');
   if(!el) return;
-  el.textContent = online ? '● Base de données MySQL — synchronisé' : '● Base MySQL — serveur injoignable';
+  el.textContent = online ? '● Base Supabase — synchronisé' : '● Base Supabase — hors ligne';
   el.classList.toggle('online', online);
 }
 
@@ -840,6 +884,41 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   });
 
   window.addEventListener('resize', ()=>switchTab(state.tab));
-  await initStorage();
-  switchTab('overview');
+
+  /* Gestion de la connexion (Supabase Auth) */
+  document.getElementById('loginForm').addEventListener('submit', async (ev)=>{
+    ev.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const er = document.getElementById('loginError');
+    btn.disabled = true;
+    if(er) er.textContent = '';
+    try{
+      await sbLogin(document.getElementById('loginEmail').value.trim(), document.getElementById('loginPassword').value);
+      document.getElementById('loginOverlay').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      await initStorage();
+      switchTab('overview');
+    }catch(err){
+      if(er) er.textContent = (err && err.message && err.message!=='auth') ? err.message : 'Email ou mot de passe incorrect.';
+    }
+    btn.disabled = false;
+  });
+  document.getElementById('btnLogout').onclick = ()=>{
+    localStorage.removeItem('sb_token');
+    requireLogin('');
+  };
+
+  if(sbToken()){
+    try{
+      await initStorage();
+      document.getElementById('loginOverlay').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      switchTab('overview');
+    }catch(err){
+      if(String(err && err.message)==='auth') requireLogin('Session expirée, reconnectez-vous.');
+      else requireLogin('');
+    }
+  } else {
+    requireLogin('');
+  }
 });
