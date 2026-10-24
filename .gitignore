@@ -2,3 +2,6 @@
 api.php
 budget.sql
 .htaccess
+
+# Notes internes (contiennent des identifiants sensibles, jamais publiées)
+INFOS_BUDGET_FOYER.md
