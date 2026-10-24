@@ -487,58 +487,129 @@ function renderUserOps(mk){
   });
 }
 
-/* ============ BUDGET ============ */
-const BUDGET = {
-  revPlan: 4541.40, revReelLabel:'',
-  fixe: 1812.59, variable: 2554.65, epargne: 200.00,
-  cats:[
-    {label:'Abonnement & téléphonie', plan:86.96,      keys:['abonnement et téléphonie']},
-    {label:'Voyage & transport + Auto',plan:318.12,    keys:['voyage et transport','auto moto']},
-    {label:'Cadeaux & solidarité',    plan:8.32,       keys:['cadeaux et solidarité']},
-    {label:'Opérations bancaires',    plan:40.00,      keys:['Opération banquaire']},
-    {label:'Éducation & famille',     plan:88.35,      keys:['education et famille']},
-    {label:'Logement',                plan:1223.00,    keys:['logement']},
-    {label:'Loisirs',                 plan:133.01,     keys:['loisir']},
-    {label:'Santé',                   plan:182.56,     keys:['santé']},
-    {label:'Vie quotidienne',         plan:2286.92,    keys:['vie quotidienne']},
-  ],
-};
-function catYearlyAvg(key){
-  let sum=0; let n=0;
-  BASE.forEach(m=>{
-    const c = (m.depenses||[]).find(x=>norm(x.categorie)===norm(key));
-    if(c){ sum+=parseAmount(c.total); n++; }
-  });
-  return n? sum/n : 0;
+/* ============ BUDGET ============
+   La page Budget est désormais calculée AUTOMATIQUEMENT à partir de vos
+   dépenses réelles (données de base + vos ajouts manuels, toutes années).
+   Référence par catégorie : moyenne mensuelle des dépenses réelles.
+   · Si une année antérieure existe : la référence = moyenne réelle de la
+     dernière année précédente complète.
+   · Sinon : la référence = moyenne réelle de l'année sélectionnée (on se cale
+     sur sa propre consommation) — elle devient plus parlante dès qu'une année
+     antérieure existe (créez 2027, qui servira de référence pour 2028, etc.).
+   L'affichage porte toujours sur l'année sélectionnée (boutons ‹ ›). */
+
+/* Dernière année strictement antérieure à `year`, ou null s'il n'y en a pas */
+function prevYearFor(year){
+  const ys = baseYears().filter(y=>y<year);
+  return ys.length ? Math.max.apply(null, ys) : null;
 }
+
+/* Totaux dépenses par catégorie (base + ajouts) pour une liste de mois d'une année */
+function catTotalsFor(year, monthNames){
+  const monthsArr = yearMonths(year);
+  const opsMap = userOps[String(year)] || {};
+  const map = {};
+  monthNames.forEach(mk=>{
+    const month = monthsArr.find(m=>m.mois===mk) || emptyMonth(mk);
+    (month.depenses||[]).forEach(c=>{
+      const k = norm(c.categorie); if(!map[k]) map[k]={total:0,label:c.categorie};
+      map[k].total = addAmounts(map[k].total, parseAmount(c.total));
+    });
+    (opsMap[mk]||[]).forEach(o=>{
+      if(o.type!=='depense') return;
+      const k = norm(o.cat); if(!map[k]) map[k]={total:0,label:o.cat};
+      map[k].total = addAmounts(map[k].total, o.amount);
+    });
+  });
+  return map;
+}
+
+/* Total dépenses (base + ajouts) pour une liste de mois d'une année */
+function depTotalFor(year, monthNames){
+  const monthsArr = yearMonths(year);
+  const opsMap = userOps[String(year)] || {};
+  let t=0;
+  monthNames.forEach(mk=>{
+    const month = monthsArr.find(m=>m.mois===mk) || emptyMonth(mk);
+    t = addAmounts(t, baseDepTotal(month));
+    (opsMap[mk]||[]).forEach(o=>{ if(o.type==='depense') t=addAmounts(t,o.amount); });
+  });
+  return t;
+}
+
+/* Moyenne mensuelle des dépenses par catégorie « fixes » vs « variables »
+   (utilisée pour le donut de l'onglet Graphiques, avec de vraies données) */
+function fixedVariable(){
+  const months = MONTHS.slice();
+  const map = catTotalsFor(state.year, months);
+  const n = months.length;
+  const fixeKeys = ['logement','abonnement et téléphonie'];
+  let fixe=0, variable=0;
+  Object.keys(map).forEach(k=>{
+    const avg = map[k].total/n;
+    if(fixeKeys.some(f=>norm(f)===k)) fixe = addAmounts(fixe, avg);
+    else variable = addAmounts(variable, avg);
+  });
+  return { fixe, variable };
+}
+
 function renderBudget(){
+  const year = state.year;
+  const months = MONTHS.slice();                       // les 12 mois de l'année
+  const refYear = prevYearFor(year);
+  const usePrev = refYear !== null;
+  const refMk = usePrev ? yearMonths(refYear).map(m=>m.mois) : months;
+
+  const refByCat = catTotalsFor(usePrev?refYear:year, refMk);   // budget de référence
+  const curByCat = catTotalsFor(year, months);                  // réel de l'année affichée
+
+  const nRef = Math.max(1, refMk.length);
+  const nCur = Math.max(1, months.length);
+
+  // Union des catégories (catégories connues + présentes dans les données)
+  const seen = {}; const keys = [];
+  CATS.forEach(c=>{ const k=norm(c.key); if(!seen[k]){ seen[k]=1; keys.push(k); } });
+  [...Object.keys(refByCat), ...Object.keys(curByCat)].forEach(k=>{ if(!seen[k]){ seen[k]=1; keys.push(k); } });
+
+  let totalRef=0, totalCur=0;
+  const rows = keys.map(nk=>{
+    const label = (refByCat[nk]&&refByCat[nk].label) || (curByCat[nk]&&curByCat[nk].label) || catMeta(nk).label;
+    const refM = (refByCat[nk]?refByCat[nk].total:0)/nRef;
+    const curM = (curByCat[nk]?curByCat[nk].total:0)/nCur;
+    totalRef = addAmounts(totalRef, refM);
+    totalCur = addAmounts(totalCur, curM);
+    return { label, refM, curM, ecart: curM-refM };
+  }).sort((a,b)=>b.curM-a.curM);
+
+  const ecartTotal = totalCur - totalRef;
+  const projected = totalCur * 12;
+
+  const note = document.getElementById('budgetNote');
+  if(note) note.textContent = usePrev
+    ? `Budget calculé automatiquement d'après votre consommation réelle (saisies + ajouts manuels). La colonne « Budget » = moyenne mensuelle des dépenses de ${refYear} ; « Réel » = moyenne mensuelle sur l'année ${year}.`
+    : `Budget calculé automatiquement d'après votre consommation réelle (saisies + ajouts manuels) sur l'année ${year}. Il gagnera en pertinence dès qu'une année antérieure existera (créez 2027 avec ‹ › : elle servira de référence pour les années suivantes).`;
+
   const kpis = [
-    {cls:'blue', label:'Budget revenus', val:cmoney(BUDGET.revPlan), sub:'objectif mensuel'},
-    {cls:'red', label:'Charges fixes', val:cmoney(BUDGET.fixe), sub:'loyer, abonnements…'},
-    {cls:'warn', label:'Charges variables', val:cmoney(BUDGET.variable), sub:'courses, loisirs…'},
-    {cls:'green', label:'Balance', val:cmoney(BUDGET.revPlan-(BUDGET.fixe+BUDGET.variable)), sub:'épargne visée '+cmoney(BUDGET.epargne)},
+    {cls:'blue',  label:'Budget de référence / mois', val:cmoney(totalRef),  sub: usePrev?('moyenne réelle '+refYear):('moyenne réelle '+year)},
+    {cls:'red',   label:'Dépense moyenne / mois',     val:cmoney(totalCur),  sub:'année '+year+', ajouts inclus'},
+    {cls: ecartTotal<=0?'green':'red', label: ecartTotal<=0?'Sous budget':'Dépassement', val:(ecartTotal<=0?'':'+')+fmt(ecartTotal)+' €', sub:'réel − budget (par mois)'},
+    {cls:'violet',label:'Dépense projetée (×12)',     val:cmoney(projected), sub:'si la moyenne se maintient'},
   ];
   document.getElementById('budgetKpis').innerHTML = kpis.map(k=>`
     <div class="kpi ${k.cls}"><div class="label">${k.label}</div>
-    <div class="val">${k.val}</div><div class="sub">${k.sub}</div></div>`).join('');
+    <div class="val ${k.cls==='red'?'neg':k.cls==='green'?'pos':''}">${k.val}</div>
+    <div class="sub">${k.sub}</div></div>`).join('');
 
-  const tbody = document.querySelector('#budgetTable tbody');
-  tbody.innerHTML = BUDGET.cats.map(c=>{
-    const real = c.keys.reduce((s,key)=>s+catYearlyAvg(key),0);
-    const ecart = real - c.plan;
-    const status = ecart<=0 ? `<span class="tag ok">OK</span>` : `<span class="tag over">+${fmt(ecart)} €</span>`;
+  document.querySelector('#budgetTable tbody').innerHTML = rows.map(r=>{
+    const status = r.ecart<=0 ? `<span class="tag ok">OK</span>` : `<span class="tag over">+${fmt(r.ecart)} €</span>`;
     return `<tr>
-      <td>${c.label}</td>
-      <td class="money">${cmoney(c.plan)}</td>
-      <td class="money">${cmoney(real)}</td>
-      <td class="money ${ecart<=0?'pos':'neg'}">${ecart<=0?fmt(ecart):'+'+fmt(ecart)} €</td>
+      <td>${e(r.label)}</td>
+      <td class="money">${cmoney(r.refM)}</td>
+      <td class="money">${cmoney(r.curM)}</td>
+      <td class="money ${r.ecart<=0?'pos':'neg'}">${r.ecart<=0?fmt(r.ecart):'+'+fmt(r.ecart)} €</td>
       <td>${status}</td>
     </tr>`;
   }).join('');
-  drawDonut('chartFixeVar', [
-    {label:'Charges fixes', color:'#ef4444', v:BUDGET.fixe},
-    {label:'Charges variables', color:'#4f9cf9', v:BUDGET.variable},
-  ]);
 }
 
 /* ============ GRAPHIQUES ============ */
@@ -559,10 +630,13 @@ function renderCharts(){
 
   const restes = MONTHS.map(mk=>monthWithOps(mk).somme);
   drawBarChart('chartRestante', { labels:MONTHS_FR.map(m=>m.slice(0,3)), series:[{name:'Solde', color:()=>0, mode:'single', values:restes}] }, {single:true});
-  drawDonut('chartFixeVar', [
-    {label:'Charges fixes', color:'#ef4444', v:BUDGET.fixe},
-    {label:'Charges variables', color:'#4f9cf9', v:BUDGET.variable},
-  ], true);
+  const fv = fixedVariable();
+  if(fv && fv.fixe+fv.variable>0){
+    drawDonut('chartFixeVar', [
+      {label:'Charges fixes', color:'#ef4444', v:fv.fixe},
+      {label:'Charges variables', color:'#4f9cf9', v:fv.variable},
+    ], true);
+  }
 }
 
 /* ============ Ajout d'opération ============ */
