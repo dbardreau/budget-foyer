@@ -3,11 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Budget Foyer 2026</title>
+<title>Budget Foyer</title>
 <meta name="color-scheme" content="dark">
 <link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.config.js"></script>
 </head>
 <body>
 
@@ -16,7 +14,7 @@
     <div class="logo">€</div>
     <div>
       <h1>Budget Foyer</h1>
-      <span class="subtitle">Gestion des finances · 2026</span>
+      <span class="subtitle">Gestion des finances · <span id="hdYear">2026</span></span>
     </div>
   </div>
   <nav class="tabs">
@@ -27,6 +25,11 @@
     <button class="tab" data-tab="categories">Catégories</button>
   </nav>
   <div class="actions">
+    <div class="year-nav" title="Changer d'année">
+      <button id="prevYear" class="nav-arrow">‹</button>
+      <span id="yearLabel" class="year-label">2026</span>
+      <button id="nextYear" class="nav-arrow">›</button>
+    </div>
     <span id="syncBadge" class="sync-badge" title="État du stockage de vos ajouts manuels"></span>
     <button id="btnAdd" class="btn primary">＋ Ajouter une opération</button>
     <button id="btnReset" class="btn ghost" title="Effacer vos ajouts personnels">Réinitialiser</button>
@@ -44,7 +47,7 @@
         <canvas id="chartRevDep" height="280"></canvas>
       </div>
       <div class="card">
-        <h3>Répartition des dépenses 2026</h3>
+        <h3>Répartition des dépenses <span id="donutYear">2026</span></h3>
         <div class="donut-wrap">
           <canvas id="chartDonut" height="280"></canvas>
           <div class="donut-legend" id="donutLegend"></div>

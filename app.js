@@ -1,14 +1,28 @@
 /* ============================================================
-   Budget Foyer 2026 — application locale
+   Budget Foyer 2026 — application PHP / MySQL
    Données de base : window.BUDGET2026 (data.js)
-   Ajouts personnels : localStorage (clé budget.userOps)
+   Ajouts personnels : base MySQL `budget` (via api.php)
    ============================================================ */
 
 /* ---------- Utilitaires ---------- */
 const MONTHS = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','decembre'];
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
-const BASE = Array.isArray(window.BUDGET2026) ? window.BUDGET2026 : [];
+let BASE = Array.isArray(window.BUDGET2026) ? window.BUDGET2026 : [];
+/* Données de base par année : baseData = { "2026": [12 mois], "2027": [...] , … } */
+let baseData = {};
+
+/* Construit les 12 mois d'une année. Sans données importées, on crée des
+   mois vides pour pouvoir quand même saisir des opérations (ex. 2027). */
+function emptyMonth(mk){ return { mois:mk, revenuTotalFoyer:'0', sommeRestante:'0', depenseTotalCommune:'0', depenses:[], revenus:[] }; }
+function yearMonths(year){
+  const arr = baseData[String(year)];
+  if(Array.isArray(arr) && arr.length===12) return arr;
+  return MONTHS.map(emptyMonth);
+}
+function baseYears(){ return Object.keys(baseData).map(Number); }
+function minBaseYear(){ const a=baseYears(); return a.length ? Math.min.apply(null,a) : state.year; }
+function maxBaseYear(){ const a=baseYears(); return a.length ? Math.max.apply(null,a) : state.year; }
 
 const CATS = [
   {key:'abonnement et téléphonie', label:'Abonnement & téléphonie', color:'#4f9cf9'},
@@ -28,19 +42,15 @@ const CATS = [
 
 const REVENUE_SOURCES = ['Salaire David','Salaire Sophie','Aides sociales (CAF)','Autre revenu'];
 
-/* Catégories / sources personnalisées (localStorage) */
-const LS_CATS = 'budget.customCats', LS_SRC = 'budget.customSrc';
-function loadArr(k){ try{ const v=JSON.parse(localStorage.getItem(k)); return Array.isArray(v)?v:[]; }catch(e){ return []; } }
-let customCats = loadArr(LS_CATS);
-let customSrc  = loadArr(LS_SRC);
-function saveCats(){ localStorage.setItem(LS_CATS, JSON.stringify(customCats)); }
-function saveSrc(){ localStorage.setItem(LS_SRC, JSON.stringify(customSrc)); }
+/* Catégories / sources personnalisées (enregistrées en base MySQL) */
+let customCats = [];
+let customSrc  = [];
+function saveCats(){ saveKey('custom_cats', customCats); }
+function saveSrc(){ saveKey('custom_src', customSrc); }
 
-/* Sous-catégories par catégorie (localStorage) */
-const LS_SUB = 'budget.subcats';
-function loadObj(k){ try{ const v=JSON.parse(localStorage.getItem(k)); return (v && typeof v==='object' && !Array.isArray(v)) ? v : {}; }catch(e){ return {}; } }
-let subcats = loadObj(LS_SUB);
-function saveSubcats(){ localStorage.setItem(LS_SUB, JSON.stringify(subcats)); }
+/* Sous-catégories par catégorie (base MySQL) */
+let subcats = {};
+function saveSubcats(){ saveKey('subcats', subcats); }
 function subsOf(id){ return subcats[id] = subcats[id] || []; }
 function addSub(id,name){ const a=subsOf(id); const n=String(name||'').trim(); if(!n) return null; if(a.some(x=>norm(x)===norm(n))) return false; a.push(n); saveSubcats(); return true; }
 function removeSub(id,i){ subsOf(id).splice(i,1); if(subcats[id].length===0) delete subcats[id]; saveSubcats(); }
@@ -72,69 +82,124 @@ function cmoney(n){ return fmt(n) + ' €'; }
 function cls(n){ return n<0 ? 'neg' : 'pos'; }
 
 /* ---------- État ---------- */
-const state = { tab:'overview', month:0 };
+const state = { tab:'overview', month:0, year:2026 };
 let editingKey = null; // {mk, id} quand on modifie une opération existante
 
 /* ============================================================
-   STOCKAGE DES AJOUTS MANUELS
-   - Base Supabase (en ligne, synchro partout) si configurée
-   - Sinon repli sur le stockage local du navigateur
-   Votre historique n'est jamais perdu : la version locale sert
-   de sauvegarde tant que la base n'est pas accessible.
+   STOCKAGE EN BASE DE DONNÉES MYSQL (serveur WAMP)
+   Le site doit être ouvert via http://localhost/... (et non en
+   double-cliquant sur le fichier index.html) pour accéder au
+   serveur api.php.
+   Toutes tes données (ajouts manuels, catégories, sources,
+   sous-catégories) sont enregistrées dans la base MySQL `budget`.
    ============================================================ */
 let userOps = {};
 let online = false;
 
-/* --- Stockage local (navigateur) --- */
-function loadOpsLocal(){ try{ const v=JSON.parse(localStorage.getItem('budget.userOps')); return (v && typeof v==='object' && !Array.isArray(v)) ? v : {}; }catch(e){ return {}; } }
-function saveOpsLocal(){ try{ localStorage.setItem('budget.userOps', JSON.stringify(userOps)); }catch(e){} }
-
-/* --- Base de données Supabase --- */
-let _sbClient = null;
-function getSb(){
-  if(!(window.SUPABASE_URL && window.SUPABASE_ANON && window.supabase)) return null;
-  if(_sbClient) return _sbClient;
-  try{ _sbClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON); return _sbClient; }catch(e){ return null; }
-}
-async function loadOpsFromDb(){
-  const c = getSb(); if(!c) return null;
-  try{
-    const {data} = await c.from('user_data').select('data').eq('id',1).maybeSingle();
-    if(data && data.data && typeof data.data==='object' && !Array.isArray(data.data)) return data.data;
-    return null;
-  }catch(e){ return null; }
-}
-async function saveOpsToDb(){
-  const c = getSb(); if(!c) return;
-  try{ await c.from('user_data').upsert({id:1, data:userOps}, {onConflict:'id'}); }catch(e){}
+async function apiFetch(body){
+  const opts = body
+    ? { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }
+    : {};
+  const res = await fetch('api.php', opts);
+  if(!res.ok) throw new Error('Erreur serveur (' + res.status + ')');
+  return await res.json();
 }
 
-/* Chargement initial (local d'abord, puis on écrasera avec la base si dispo) */
-userOps = loadOpsLocal();
+/* Charge toutes les données depuis la base au démarrage */
 async function initStorage(){
-  const db = await loadOpsFromDb();
-  online = !!db;
-  if(db){ userOps = db; saveOpsLocal(); }
+  try{
+    const d = await apiFetch();
+    customCats = (d && Array.isArray(d.custom_cats)) ? d.custom_cats : [];
+    customSrc  = (d && Array.isArray(d.custom_src))  ? d.custom_src  : [];
+    subcats    = (d && d.subcats && typeof d.subcats==='object' && !Array.isArray(d.subcats)) ? d.subcats : {};
+
+    /* --- Opérations par année : ops = { "2026": { "janvier": [..], .. }, … } --- */
+    let rawOps = (d && d.ops && typeof d.ops==='object') ? d.ops : {};
+    let newOps = {};
+    let opsIsYearFormat = false;
+    for(const k in rawOps){ if(!MONTHS.includes(k)){ opsIsYearFormat = true; break; } }
+    if(opsIsYearFormat){ newOps = rawOps; }
+    else {
+      // ancien format : opérations directes par mois → on les rattache à 2026
+      const flat = {};
+      for(const mk of MONTHS){ if(rawOps[mk] && rawOps[mk].length) flat[mk] = rawOps[mk]; }
+      if(Object.keys(flat).length) newOps['2026'] = flat;
+    }
+    userOps = newOps;
+
+    /* --- Données de base par année : base = { "2026": [12 mois], … } --- */
+    let rawBase = (d && d.base) ? d.base : [];
+    let newBase = {};
+    if(Array.isArray(rawBase)){
+      // ancien format (tableau des 12 mois 2026)
+      if(rawBase.length) newBase['2026'] = rawBase;
+    } else if(rawBase && typeof rawBase==='object'){
+      for(const y in rawBase){ if(Array.isArray(rawBase[y])) newBase[y] = rawBase[y]; }
+    }
+    // complète avec le germe data.js si l'année 2026 n'est pas encore en base
+    if(!newBase['2026'] && Array.isArray(window.BUDGET2026) && window.BUDGET2026.length){
+      newBase['2026'] = window.BUDGET2026;
+    }
+    baseData = newBase;
+
+    // Re-sauvegarde au format normalisé (met à jour l'ancien format si besoin)
+    apiFetch({action:'save', k:'base', v:baseData});
+    apiFetch({action:'save', k:'ops', v:userOps});
+
+    // Année par défaut : la plus récente présente
+    const years = baseYears();
+    if(years.length && !years.includes(state.year)) state.year = Math.max.apply(null, years);
+    BASE = yearMonths(state.year);
+    online = true;
+  }catch(e){ online = false; }
   updateSyncBadge();
 }
 
-/* Sauvegarde : toujours en local + en base si configurée */
-function saveOps(){
-  saveOpsLocal();
-  if(getSb()){ online = true; saveOpsToDb(); }
-  updateSyncBadge();
+/* Opérations d'une année (objet mois -> liste) avec création implicite */
+function oy(year){ return userOps[String(year)] || (userOps[String(year)] = {}); }
+/* Opérations d'un mois de l'année courante */
+function opsOf(mk){ return oy(state.year)[mk] || []; }
+
+/* Active une année : met à jour les données et l'affichage */
+function applyYear(){
+  BASE = yearMonths(state.year);
+  setYearMeta();
+  switchTab(state.tab);
 }
+
+/* Change d'année (‹ ›) : crée l'année si elle n'existe pas encore,
+   puis bascule l'affichage dessus. */
+function changeYear(delta){
+  const y = state.year + delta;
+  if(y < 2000 || y > 2100) return;             // garde-fou
+  if(!baseData[y]){
+    baseData[y] = MONTHS.map(emptyMonth);      // invite vide à remplir
+    apiFetch({action:'save', k:'base', v:baseData}).catch(()=>{});
+  }
+  state.year = y;
+  applyYear();
+}
+function setYearMeta(){
+  const y = String(state.year);
+  const el = document.getElementById('yearLabel'); if(el) el.textContent = y;
+  const hd = document.getElementById('hdYear');  if(hd) hd.textContent = y;
+  const dt = document.getElementById('donutYear'); if(dt) dt.textContent = y;
+  document.title = 'Budget Foyer ' + y;
+}
+
+/* Enregistre une clef en base (envoi asynchrone) */
+function saveKey(k, v){
+  apiFetch({action:'save', k, v}).then(()=>{ online = true; updateSyncBadge(); })
+    .catch(()=>{ online = false; updateSyncBadge(); });
+}
+
+function saveOps(){ saveKey('ops', userOps); }
 
 function updateSyncBadge(){
   const el = document.getElementById('syncBadge');
   if(!el) return;
-  if(getSb()){
-    el.textContent = online ? '● Base de données — synchronisé' : '● Synchronisation…';
-    el.classList.add('online');
-  } else {
-    el.textContent = '● Stockage local navigateur';
-    el.classList.remove('online');
-  }
+  el.textContent = online ? '● Base de données MySQL — synchronisé' : '● Base MySQL — serveur injoignable';
+  el.classList.toggle('online', online);
 }
 
 function monthByKey(k){ return BASE.find(m => m.mois===k) || null; }
@@ -154,7 +219,7 @@ function baseSomme(month){
 /* Totaux avec ajouts utilisateur pour un mois */
 function monthWithOps(mk){
   const month = monthByKey(mk);
-  const ops = userOps[mk] || [];
+  const ops = opsOf(mk);
   const depOps = ops.filter(o=>o.type==='depense');
   const revOps = ops.filter(o=>o.type==='revenu');
   const depAdd = depOps.reduce((s,o)=>s+o.amount,0);
@@ -207,11 +272,11 @@ function yearlyTotals(){
 function renderOverview(){
   const tot = yearlyTotals();
   const balance = Math.round((tot.rev-tot.dep)*100)/100;
-  const joined = Object.keys(userOps).reduce((s,k)=>s+userOps[k].length,0);
+  const joined = MONTHS.reduce((s,mk)=>s+opsOf(mk).length,0);
   const kpis = [
-    {cls:'blue', label:'Revenus 2026', val:cmoney(tot.rev), sub:'Total entrées'},
-    {cls:'red',  label:'Dépenses 2026', val:cmoney(tot.dep), sub:'Total sorties'},
-    {cls: balance<0?'red':'green', label:'Solde 2026', val:cmoney(balance), sub:'Revenus − dépenses'},
+    {cls:'blue', label:'Revenus '+state.year, val:cmoney(tot.rev), sub:'Total entrées'},
+    {cls:'red',  label:'Dépenses '+state.year, val:cmoney(tot.dep), sub:'Total sorties'},
+    {cls: balance<0?'red':'green', label:'Solde '+state.year, val:cmoney(balance), sub:'Revenus − dépenses'},
     {cls:'violet', label:'Ajouts manuels', val:String(joined), sub:'opérations saisies'},
   ];
   document.getElementById('kpis').innerHTML = kpis.map(k=>`
@@ -219,8 +284,8 @@ function renderOverview(){
     <div class="val ${k.cls==='red'?'neg':k.cls==='green'?'pos':''}">${k.val}</div>
     <div class="sub">${k.sub}</div></div>`).join('');
 
-  const revs = MONTHS.map(mk=>baseRevTotal(monthByKey(mk)) + (userOps[mk]||[]).filter(o=>o.type==='revenu').reduce((s,o)=>s+o.amount,0));
-  const deps = MONTHS.map(mk=>baseDepTotal(monthByKey(mk)) + (userOps[mk]||[]).filter(o=>o.type==='depense').reduce((s,o)=>s+o.amount,0));
+  const revs = MONTHS.map(mk=>baseRevTotal(monthByKey(mk)) + opsOf(mk).filter(o=>o.type==='revenu').reduce((s,o)=>s+o.amount,0));
+  const deps = MONTHS.map(mk=>baseDepTotal(monthByKey(mk)) + opsOf(mk).filter(o=>o.type==='depense').reduce((s,o)=>s+o.amount,0));
   drawBarChart('chartRevDep', { labels:MONTHS_FR.map(m=>m.slice(0,3)), series:[
       {name:'Revenus', color:'#22c55e', values:revs},
       {name:'Dépenses', color:'#ef4444', values:deps},
@@ -230,7 +295,7 @@ function renderOverview(){
   const catTot = {};
   BASE.forEach(m => { (m.depenses||[]).forEach(c=>{ const k=norm(c.categorie); catTot[k]=addAmounts(catTot[k]||0, parseAmount(c.total)); }); });
   MONTHS.forEach(mk=>{
-    const ops=(userOps[mk]||[]).filter(o=>o.type==='depense');
+    const ops=opsOf(mk).filter(o=>o.type==='depense');
     ops.forEach(o=>{ const k=norm(o.cat); catTot[k]=(catTot[k]||0)+o.amount; });
   });
   const entries = Object.entries(catTot).map(([k,v])=>({k,v})).filter(e=>e.v>0).sort((a,b)=>b.v-a.v);
@@ -256,7 +321,7 @@ function renderTopCat(entries){
 /* ============ MOIS ============ */
 function renderMonth(){
   const mk = MONTHS[state.month];
-  document.getElementById('currentMonthTitle').textContent = MONTHS_FR[state.month] + ' 2026';
+  document.getElementById('currentMonthTitle').textContent = MONTHS_FR[state.month] + ' ' + state.year;
   const w = monthWithOps(mk);
   const kpis = [
     {cls:'blue', label:'Revenus', val:cmoney(w.revTotal), sub:w.revAdd?'dont +'+cmoney(w.revAdd)+' (ajouts)':'représentation mensuelle'},
@@ -351,7 +416,8 @@ function renderExpenses(mk){
 }
 
 function renderUserOps(mk){
-  const ops = userOps[mk]||[];
+  const arr = oy(state.year)[mk] || (oy(state.year)[mk] = []);
+  const ops = arr;
   const box = document.getElementById('userOps');
   if(!ops.length){ box.innerHTML = '<div class="muted" style="font-size:13px">Aucune opération ajoutée.</div>'; return; }
   box.innerHTML = `<div class="list">` + ops.map((o,i)=>{
@@ -369,7 +435,9 @@ function renderUserOps(mk){
   box.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
     const i = +b.dataset.del;
     if(confirm('Supprimer cette opération ?')){
-      userOps[mk].splice(i,1);
+      const a = oy(state.year)[mk];
+      a.splice(i,1);
+      if(!a.length) delete oy(state.year)[mk];
       saveOps(); renderMonth();
     }
   });
@@ -459,19 +527,19 @@ function openModal(){
   document.getElementById('modalTitle').textContent = 'Ajouter une opération';
   document.getElementById('addForm').reset();
   const sel = document.getElementById('fMois');
-  sel.innerHTML = MONTHS.map((mk,i)=>`<option value="${i}">${MONTHS_FR[i]} 2026</option>`).join('');
+  sel.innerHTML = MONTHS.map((mk,i)=>`<option value="${i}">${MONTHS_FR[i]} ${state.year}</option>`).join('');
   sel.value = state.month;
   setFormType('depense');
   document.getElementById('modal').classList.remove('hidden');
 }
 function openEdit(mk, i){
-  const op = userOps[mk][i];
+  const op = oy(state.year)[mk][i];
   if(!op) return;
-  editingKey = {mk, i};
+  editingKey = {mk, year: state.year, i};
   document.getElementById('modalTitle').textContent = 'Modifier l\u2019opération';
   document.getElementById('addForm').reset();
   const sel = document.getElementById('fMois');
-  sel.innerHTML = MONTHS.map((m,idx)=>`<option value="${idx}">${MONTHS_FR[idx]} 2026</option>`).join('');
+  sel.innerHTML = MONTHS.map((m,idx)=>`<option value="${idx}">${MONTHS_FR[idx]} ${state.year}</option>`).join('');
   sel.value = MONTHS.indexOf(mk);
   setFormType(op.type);
   const fcat = document.getElementById('fCat');
@@ -705,6 +773,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
   document.getElementById('prevMonth').onclick=()=>{ state.month=(state.month+11)%12; renderMonth(); };
   document.getElementById('nextMonth').onclick=()=>{ state.month=(state.month+1)%12; renderMonth(); };
+  document.getElementById('prevYear').onclick=()=>changeYear(-1);
+  document.getElementById('nextYear').onclick=()=>changeYear(1);
   document.getElementById('btnAdd').onclick=openModal;
   document.getElementById('modalClose').onclick=()=>document.getElementById('modal').classList.add('hidden');
   document.getElementById('formCancel').onclick=()=>document.getElementById('modal').classList.add('hidden');
@@ -747,13 +817,19 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     if(!amount||amount<=0){ showToast('Montant invalide.','err'); return; }
     const payload = {type, cat, sub, label:label||sub||(type==='depense'?'Dépense':'Revenu'), amount:Math.round(amount*100)/100};
     if(editingKey){
-      const {mk:emk, i:ei} = editingKey;
-      // si on a changé de mois, on déplace l'opération
-      if(emk!==mk){ userOps[emk].splice(ei,1); if(!userOps[emk].length) delete userOps[emk]; }
-      else { userOps[emk][ei] = payload; }
+      const {mk:emk, year:ey, i:ei} = editingKey;
+      // si on a changé de année ou de mois, on déplace l'opération
+      if(emk!==mk || ey!==state.year){
+        const src = oy(ey)[emk];
+        if(src){ src.splice(ei,1); if(!src.length) delete oy(ey)[emk]; }
+        if(!oy(state.year)[mk]) oy(state.year)[mk]=[];
+        oy(state.year)[mk].push(payload);
+      } else {
+        oy(state.year)[mk][ei] = payload;
+      }
     } else {
-      if(!userOps[mk]) userOps[mk]=[];
-      userOps[mk].push(payload);
+      if(!oy(state.year)[mk]) oy(state.year)[mk]=[];
+      oy(state.year)[mk].push(payload);
     }
     editingKey = null;
     saveOps();

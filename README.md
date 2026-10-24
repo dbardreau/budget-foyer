@@ -1,15 +1,42 @@
-# Budget Foyer 2026
+# Budget Foyer
 
-Tableau de bord local de gestion du budget, préchargé avec les données du fichier
-`compte 2026.ods`.
+Tableau de bord de gestion du budget. Tes **ajouts personnels** et les
+**données importées** (par année) sont enregistrés dans une **base MySQL**
+locale (`budget`) sur ton serveur **WAMP** : plus de dépendance au navigateur,
+tes saisies tiennent dans la base même si tu vides les données du navigateur.
 
-## Ouvrir le site
+## ⚠️ Comment ouvrir le site
 
-Double-clique simplement sur **`index.html`** : tout fonctionne localement dans le
-navigateur, sans serveur ni connexion.
+Il faut passer par le serveur WAMP (**PHP** + **MySQL**), pas en double-cliquant
+sur le fichier. Voir « Installation » ci-dessous.
+
+## Installation (serveur WAMP)
+
+1. **Copie le dossier** `budget` (celui-ci) dans le dossier web de WAMP,
+   par exemple `C:\wamp64\www\budget`.
+2. **Lance WAMP** et vérifie que l'icône est **verte** (services Apache + MySQL
+   démarrés).
+3. **Crée la base** : ouvre phpMyAdmin (`http://localhost/phpmyadmin`), onglet
+   **SQL**, colle le contenu du fichier `budget.sql`, puis **Exécuter**.
+   Cela crée la base `budget` et sa table `kv`.
+   > Optionnel : c'est normalement fait automatiquement par `api.php`, mais
+   > le faire une fois à la main ne coûte rien.
+4. **Ouvre le site** : `http://localhost/budget/` dans ton navigateur.
+
+Le badge en haut à droite doit afficher **« Base de données MySQL — synchronisé »**.
+
+## Configuration de la base (si besoin)
+
+Par défaut, `api.php` se connecte à MySQL avec les paramètres WAMP classiques :
+hôte `127.0.0.1`, port `3306`, utilisateur `root`, sans mot de passe. Si tes
+identifiants diffèrent, modifie le tableau `$config` en haut de `api.php`.
 
 ## Fonctionnalités
 
+- **Plusieurs années** : boutons ‹ › en haut à droite pour naviguer entre les
+  années (2026, 2027…). Une année vide est créée automatiquement dès que tu y
+  vas ; tu peux ensuite y saisir des opérations. Les données de base d'une
+  année sont stockées séparément des ajouts manuels.
 - **Accueil** : revenus / dépenses / solde annuels, graphique mensuel, répartition
   des dépenses et top catégories.
 - **Mois** : détail de chaque mois (revenus, dépenses par catégorie)
@@ -18,98 +45,36 @@ navigateur, sans serveur ni connexion.
   fixes / variables.
 - **Graphiques** : évolution des dépenses par grande catégorie, somme restante
   mensuelle, répartition fixe / variable.
-- **Catégories** (onglet dédié) : gère tes **catégories de dépenses**, tes
-  **sources de revenus** et leurs **sous-catégories**. Bascule Dépenses / Revenus,
-  ajoute une nouvelle catégorie ou source, et ajoute des sous-catégories à chaque
-  entrée (avec suppression individuelle). Le tout est sauvegardé dans le navigateur.
+- **Catégories** : gère tes catégories de dépenses, tes sources de revenus et
+  leurs sous-catégories. Bascule Dépenses / Revenus, ajoute et supprime des
+  entrées. Le tout est sauvegardé en base MySQL.
 - **Ajouter une opération** : bouton « ＋ Ajouter une opération » pour saisir un
-  revenu ou une dépense (catégorie, sous-catégorie optionnelle, libellé, montant).
-  Les saisies sont conservées dans le navigateur (localStorage) et réapparaissent
-  à chaque ouverture. Dans l'onglet **Mois**, la section « Vos ajouts manuels »
-  permet de **modifier** (✎ Modifier) ou **supprimer** (Suppr.) chaque opération.
+  revenu ou une dépense. Dans l'onglet **Mois**, la section « Vos ajouts manuels »
+  permet de **modifier** (✎) ou **supprimer** (Suppr.) chaque opération.
 - **Réinitialiser** : supprime les opérations que tu as ajoutées.
+
+## Quelles données vont en MySQL ?
+
+| Donnée                                   | Emplacement      |
+|------------------------------------------|------------------|
+| Données de base par année (référence)    | base `budget` (clé `base`) |
+| Opérations ajoutées manuellement         | base `budget` (clé `ops`)  |
+| Catégories & sources personnalisées      | base `budget` (clés `custom_cats`/`custom_src`) |
+| Sous-catégories                          | base `budget` (clé `subcats`) |
+
+Les données de base sont stockées dans la base, par année (`base = { "2026": [12 mois], … }`).
+Le fichier **`data.js`** sert uniquement de **germe de départ** pour l'année 2026 :
+au premier lancement, s'il n'y a pas encore de données en base, elles sont copiées
+automatiquement depuis `data.js` vers MySQL (clé `base`, année `2026`). Ensuite
+la base fait foi. Tu peux conserver `data.js` en secours.
 
 ## Fichiers
 
-| Fichier     | Rôle |
-|-------------|------|
-| `index.html`| Structure et onglets |
-| `style.css` | Thème sombre |
-| `app.js`    | Logique, graphiques, saisie (données budgétaires incluses) |
-| `data.js`   | Données 2026 importées depuis `compte 2026.ods` (ne pas modifier) |
-| `supabase.config.js` | Identifiants de la base en ligne (à compléter) |
-
-## Données brutes
-
-Pour réimporter les données depuis `compte 2026.ods`, voir le dossier
-`%TEMP%\opencode\ods_extract` (parser PowerShell `tojson.ps1`).
-
----
-
-# Guide : mettre ton budget en ligne (consulter + saisir partout)
-
-Objectif : héberger le site sur **GitHub Pages** (accessible par une adresse web)
-et stocker tes **ajouts manuels** dans une base **Supabase** (synchro dans le cloud),
-pour les retrouver depuis le téléphone ou un autre ordinateur.
-
-> Tes données de base restent dans `data.js`. Seuls tes **ajouts manuels** sont
-> synchronisés en ligne (comme avant, mais dans le cloud au lieu du navigateur).
-
-## Étape 2 — Créer le dépôt GitHub et héberger le site
-
-1. Va sur https://github.com et connecte-toi.
-2. Clique sur **« + »** en haut à droite → **« New repository »**.
-3. Nomme-le (ex. `budget-foyer`), laisse **Public** ou choisis **Private**
-   (recommandé pour tes données), **ne coche pas** « Add a README » (tu en as déjà un).
-   Clique sur **« Create repository »**.
-4. Sur la page suivante, il faut **déposer les fichiers** de ce dossier :
-   `index.html`, `style.css`, `app.js`, `data.js`, `supabase.config.js`, `README.md`.
-   - La plus simple : clique sur **« uploading an existing file »**, glisse-dépose
-     les fichiers, puis **« Commit changes »**.
-5. Active l'hébergement : onglet **Settings** → **Pages** → **Source** :
-   choisis la branche `main` et le dossier `/ (root)` → **Save**.
-6. GitHub te donne une adresse du type `https://tonpseudo.github.io/budget-foyer/`.
-   Patientez 1-2 min, puis ton site est **consultable de partout** à cette adresse.
-
-> Pour consulter tes données, ouvre l'adresse GitHub Pages (pas le fichier local).
-
-## Étape 3 — Créer la base Supabase
-
-1. Va sur https://supabase.com et connecte-toi (ouvre un compte gratuit).
-2. Clique sur **« New project »**, choisis un nom, un mot de passe de base
-   (à noter), et une région proche de chez toi → **Create new project**.
-3. Une fois le projet créé, ouvre **SQL Editor** dans le menu de gauche, colle le
-   script ci-dessous, puis clique sur **« Run »** (cela prépare la table de données) :
-
-```sql
-create table if not exists public.user_data (
-  id bigint primary key default 1,
-  data jsonb not null default '{}'::jsonb
-);
-insert into public.user_data (id, data) values (1, '{}'::jsonb)
-  on conflict (id) do nothing;
-
-alter table public.user_data enable row level security;
--- Politique ouverte pour un usage familial simple :
-create policy "tous" on public.user_data for all using (true) with check (true);
-```
-
-4. Toujours dans Supabase : menu **Project Settings** → **API**.
-   Copie :
-   - **Project URL** (ex. `https://xxxx.supabase.co`)
-   - **anon public key** (longue chaîne `eyJ...`)
-5. Sur GitHub, ouvre le fichier `supabase.config.js`, clique sur l'icône **stylo
-   (crayon)** pour l'éditer, colle l'URL et la clé entre les guillemets, puis
-   **Commit changes**.
-
-Une fois la page GitHub Pages mise à jour (1-2 min), ton budget est complet et
-**synchronisé partout** : tu peux ajouter ou modifier des opérations depuis
-n'importe quel appareil, tout est conservé dans la base en ligne.
-
-### Notes
-- Le badge en haut à droite indique l'état de la synchronisation
-  (« Stockage local navigateur » = base non configurée, « Synchronisé » = en ligne).
-- Si la base est momentanément injoignable, tes ajouts sont conservés dans le
-  navigateur et remontés dès que la connexion revient.
-- Si tu ne configure pas de base, l'application fonctionne comme avant (locale).
-
+| Fichier       | Rôle |
+|---------------|------|
+| `index.html`  | Structure et onglets |
+| `style.css`   | Thème sombre |
+| `app.js`      | Logique, graphiques, saisie (lit et écrit la base via `api.php`), navigation multi-années |
+| `data.js`     | Germe des données 2026 (utilisé pour la migration initiale) |
+| `api.php`     | API PHP : lecture / écriture de la base MySQL |
+| `budget.sql`  | Script de création de la base `budget` |

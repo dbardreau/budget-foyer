@@ -1,0 +1,6 @@
+# Protège le dossier .git (historique du dépôt) contre tout accès web
+RewriteEngine On
+RewriteRule ^\.git/ - [F,L]
+
+# Empêche la liste des répertoires
+Options -Indexes
