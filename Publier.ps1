@@ -1,4 +1,4 @@
-# Publie les modifications du site Budget Foyer sur GitHub.
+﻿# Publie les modifications du site Budget Foyer sur GitHub.
 # Fait exactement ce que tu faisais a la main :
 #   git add .  ->  git commit -m "..."  ->  git push
 # A lancer par double-clic sur "Publier mes modifications.bat".

@@ -1,4 +1,4 @@
-# Analyse un (ou plusieurs) export(s) OFX de la banque et compare les totaux
+﻿# Analyse un (ou plusieurs) export(s) OFX de la banque et compare les totaux
 # mensuels avec les donnees du site (data.js).
 #
 #   Utilisation :  powershell -NoProfile -ExecutionPolicy Bypass -File outils\analyser-ofx.ps1
