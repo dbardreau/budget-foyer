@@ -293,6 +293,44 @@ function opsOfYear(year, mk){ return (userOps[String(year)]||{})[mk] || []; }
 function commonOps(list){ return list.filter(o=>(o.compte||'commun')==='commun'); }
 function isInterne(o){ return !!(o && (o.interne===true || /^mouvements? internes?/.test(norm(o.cat)))); }
 
+/* Épargne et virements internes du foyer : pas des dépenses réelles.
+   Les « Mouvements internes débiteurs » sont des transferts vers un autre de
+   nos comptes (Bourso+) et les « Dépenses d'épargne » une mise de côté.
+   On les exclut du budget consolidé du foyer (Accueil, vue « Tous », budgets,
+   graphiques, prévisionnel), pas des vues individuelles de compte.
+   `isBaseEpargne` teste une catégorie de la base (data.js), `isEpargneOp`
+   teste une opération saisie. */
+function isBaseEpargne(cat){
+  const k = norm(cat);
+  return k==='mouvements internes debiteurs' || k==="depenses d'epargne";
+}
+function isEpargneOp(o){ return !!(o && (isBaseEpargne(o.cat) || isBaseEpargne(o.categorie))); }
+
+/* Somme des « mouvements internes débiteurs » + « dépenses d'épargne » du
+   compte commun pour un mois donné (base + opérations saisies). */
+function epargneTransfMonthly(mk){
+  const month = yearMonths(state.year).find(m=>m.mois===mk) || emptyMonth(mk);
+  let t = 0;
+  (month.depenses||[]).forEach(c=>{
+    if(isBaseEpargne(c.categorie)) t = addAmounts(t, parseAmount(c.total));
+  });
+  commonOps(opsOfYear(state.year, mk)).forEach(o=>{
+    if(o.type==='depense' && isEpargneOp(o)) t = addAmounts(t, o.amount);
+  });
+  return t;
+}
+function epargneTransfMonthlyFor(year, mk){
+  const month = yearMonths(year).find(m=>m.mois===mk) || emptyMonth(mk);
+  let t = 0;
+  (month.depenses||[]).forEach(c=>{
+    if(isBaseEpargne(c.categorie)) t = addAmounts(t, parseAmount(c.total));
+  });
+  commonOps(opsOfYear(year, mk)).forEach(o=>{
+    if(o.type==='depense' && isEpargneOp(o)) t = addAmounts(t, o.amount);
+  });
+  return t;
+}
+
 function emptyEpargneMonth(mk){ return {mois:mk, soldeDebut:null, soldeFin:null, operations:[]}; }
 function epargneMonths(year){
   const arr = epargneData[String(year)];
@@ -497,6 +535,10 @@ function yearlyTotals(){
   const ep = epargneExternalTotals(state.year);
   tot.rev = addAmounts(tot.rev, ep.rev);
   tot.dep = addAmounts(tot.dep, ep.dep);
+  // l'épargne et les virements internes du compte commun ne sont pas des dépenses réelles du foyer
+  let epargne = 0;
+  MONTHS.forEach(mk=> epargne = addAmounts(epargne, epargneTransfMonthlyFor(state.year, mk)));
+  tot.dep = addAmounts(tot.dep, -epargne);
   return tot;
 }
 function renderOverview(){
@@ -595,14 +637,16 @@ function renderMonth(){
     }
   } else if(acc==='tous'){
     const rev = addAmounts(common.revTotal, extRev);
-    const dep = addAmounts(common.depTotal, extDep);
+    // le transfert vers le Livret et l'épargne ne sont pas des dépenses réelles du foyer
+    const epargne = epargneTransfMonthly(mk);
+    const dep = addAmounts(addAmounts(common.depTotal, -epargne), extDep);
     kpis = [
       {cls:'blue',  label:'Revenus', val:cmoney(rev), sub:'commun + Livret, hors virements internes'},
-      {cls:'red',   label:'Dépenses', val:cmoney(dep), sub:'commun + Livret, hors virements internes'},
+      {cls:'red',   label:'Dépenses', val:cmoney(dep), sub:'hors épargne et virements internes'},
       {cls: (rev-dep)<0?'red':'green', label:'Solde du mois', val:cmoney(addAmounts(rev,-dep)), sub:'revenus − dépenses'},
       {cls:'violet', label:'Solde du Livret', val:soldeTxt, sub:soldeSub},
     ];
-    note = "Vue consolidée : compte commun + Livret Bourso+. Les virements entre vos comptes sont exclus pour éviter les doubles comptages.";
+    note = "Vue consolidée : compte commun + Livret Bourso+. L'épargne et les virements entre comptes (transferts vers le Livret) ne sont pas des dépenses réelles et sont retirés du budget.";
   } else {
     kpis = [
       {cls:'blue', label:'Revenus', val:cmoney(common.revTotal), sub:common.revAdd?'dont +'+cmoney(common.revAdd)+' (ajouts)':'représentation mensuelle'},
@@ -737,9 +781,15 @@ function renderRevenueGroups(groups){
 /* Cartographie des dépenses selon le compte affiché */
 function expenseTotalsForAcc(year, mk, acc){
   if(acc==='livret') return livretExpenseMap(year, mk, false);
-  if(acc==='tous') return mergeCatMaps(catTotalsMkFor(year, mk), livretExpenseMap(year, mk, true));
+  if(acc==='tous'){
+    // côté commun : on retire l'épargne et les virements internes (pas des dépenses réelles du foyer)
+    const cm = catTotalsMkFor(year, mk);
+    Object.keys(cm).forEach(k=>{ if(isEpargneCatKey(k)) delete cm[k]; });
+    return mergeCatMaps(cm, livretExpenseMap(year, mk, true));
+  }
   return catTotalsMkFor(year, mk);
 }
+function isEpargneCatKey(k){ return /^mouvements internes debiteurs$|^depenses d'epargne$/.test(k); }
 function expenseMapFor(acc, mk){ return expenseTotalsForAcc(state.year, mk, acc); }
 
 /* Revenus d'un mois pour un compte donné, normalisés en { clé: { label, total } } */
@@ -797,6 +847,7 @@ function monthForecastFor(year, mk, acc){
   hist.forEach(x=>{
     const dm = expenseTotalsForAcc(x.y, x.m, acc);
     Object.keys(dm).forEach(k=>{
+      if(isEpargneCatKey(k)) return; // épargne / virements internes non réels (foyer)
       if(!dep[k]) dep[k] = {label:dm[k].label, total:0, months:0};
       dep[k].total = addAmounts(dep[k].total, dm[k].total);
       dep[k].months++;
@@ -824,6 +875,7 @@ function monthForecastFor(year, mk, acc){
     .sort((a,b)=>b.remaining-a.remaining);
 
   const depActual = expenseTotalsForAcc(year, mk, acc);
+  Object.keys(depActual).forEach(k=>{ if(isEpargneCatKey(k)) delete depActual[k]; });
   const revActual = revenueTotalsForAcc(year, mk, acc);
   const revReal = Object.values(revActual).reduce((s,x)=>s+x.total,0);
   const depReal = Object.values(depActual).reduce((s,x)=>s+x.total,0);
@@ -975,12 +1027,14 @@ function catTotalsFor(year, monthNames){
   monthNames.forEach(mk=>{
     const month = monthsArr.find(m=>m.mois===mk) || emptyMonth(mk);
     (month.depenses||[]).forEach(c=>{
+      if(isBaseEpargne(c.categorie)) return; // épargne / virements internes non réels
       const k = norm(c.categorie); if(!map[k]) map[k]={total:0,label:c.categorie};
       map[k].total = addAmounts(map[k].total, parseAmount(c.total));
     });
     (opsMap[mk]||[]).forEach(o=>{
       if(o.type!=='depense') return;
       if((o.compte||'commun')!=='commun') return;
+      if(isEpargneOp(o)) return; // épargne / virements internes non réels
       const k = norm(o.cat); if(!map[k]) map[k]={total:0,label:o.cat};
       map[k].total = addAmounts(map[k].total, o.amount);
     });
@@ -1004,8 +1058,10 @@ function depTotalFor(year, monthNames){
     t = addAmounts(t, baseDepTotal(month));
     (opsMap[mk]||[]).forEach(o=>{
       if(o.type!=='depense' || (o.compte||'commun')!=='commun') return;
+      if(isEpargneOp(o)) return; // épargne / virements internes non réels
       t=addAmounts(t,o.amount);
     });
+    t = addAmounts(t, -epargneTransfMonthlyFor(year, mk)); // base du commun, retire l'épargne/virements
     epargneOps(year, mk).forEach(o=>{
       if(o.type!=='depense' || isInterne(o)) return;
       t = addAmounts(t, o.montant || o.amount || 0);
@@ -1183,6 +1239,7 @@ function monthTotalsFor(year, mk){
     if(o.type==='revenu') rev = addAmounts(rev, o.amount);
     else if(o.type==='depense') dep = addAmounts(dep, o.amount);
   });
+  dep = addAmounts(dep, -epargneTransfMonthlyFor(year, mk)); // épargne et virements internes retirés
   epargneOps(year, mk).forEach(o=>{
     if(isInterne(o)) return;
     const amt = o.montant || o.amount || 0;
@@ -1275,7 +1332,9 @@ function renderSankey(mk){
   const box = document.getElementById('chartSankey');
   if(!box) return;
 
-  const map = mergeCatMaps(catTotalsMk(mk), livretExpenseMap(state.year, mk, true));
+  const cm = catTotalsMk(mk);
+  Object.keys(cm).forEach(k=>{ if(isEpargneCatKey(k)) delete cm[k]; });
+  const map = mergeCatMaps(cm, livretExpenseMap(state.year, mk, true));
   const groups = CHART_GROUPS.map(g=>({label:g.label, color:g.color, keys:g.keys.map(norm), total:0}));
   const catchAll = {label:'Autres', color:'#94a3b8', keys:[], total:0};
   Object.keys(map).forEach(k=>{
