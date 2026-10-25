@@ -5,3 +5,9 @@ budget.sql
 
 # Notes internes (contiennent des identifiants sensibles, jamais publiées)
 INFOS_BUDGET_FOYER.md
+
+# Relevés et exports bancaires : données personnelles, ne doivent JAMAIS être publiées
+exports/
+*.ofx
+*.qif
+*.csv
