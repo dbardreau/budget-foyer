@@ -1,12 +1,12 @@
-// Donnees extraites de compte 2026.ods
-// Automatiquement generees - ne pas modifier a la main
-
+// Donnees du compte commun 2026.
+// Base : export bancaire du 02/01/2026 au 30/09/2026 (965 operations),
+// corrige et complete par outils\corriger-data.ps1.
 window.BUDGET2026 = [
     {
         "mois":  "janvier",
-        "revenuTotalFoyer":  "6793,15",
-        "sommeRestante":  "188,14",
-        "depenseTotalCommune":  "6605,01",
+        "revenuTotalFoyer":  "6 793,15 EUR",
+        "sommeRestante":  "188,14 EUR",
+        "depenseTotalCommune":  "6 605,01 EUR",
         "depenses":  [
                          {
                              "total":  "2 195,26 €",
@@ -87,7 +87,7 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "904,76 €",
+                             "total":  "847,86 EUR",
                              "categorie":  "auto moto",
                              "items":  [
                                            {
@@ -313,9 +313,9 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "fevrier",
-        "revenuTotalFoyer":  "6311,24",
-        "sommeRestante":  "-132,339999999999",
-        "depenseTotalCommune":  "6443,58",
+        "revenuTotalFoyer":  "6 311,24 EUR",
+        "sommeRestante":  "-132,34 EUR",
+        "depenseTotalCommune":  "6 443,58 EUR",
         "depenses":  [
                          {
                              "total":  "1 770,00 €",
@@ -396,7 +396,7 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "1 684,57 €",
+                             "total":  "1 162,66 EUR",
                              "categorie":  "auto moto",
                              "items":  [
                                            {
@@ -622,9 +622,9 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "mars",
-        "revenuTotalFoyer":  "5662,58",
-        "sommeRestante":  "-9,64999999999964",
-        "depenseTotalCommune":  "5672,23",
+        "revenuTotalFoyer":  "5 671,91 EUR",
+        "sommeRestante":  "-0,32 EUR",
+        "depenseTotalCommune":  "5 672,23 EUR",
         "depenses":  [
                          {
                              "total":  "1 835,68 €",
@@ -705,7 +705,7 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "780,89 €",
+                             "total":  "722,89 EUR",
                              "categorie":  "auto moto",
                              "items":  [
                                            {
@@ -894,7 +894,7 @@ window.BUDGET2026 = [
                         {
                             "detail":  "paye",
                             "nom":  "SALAIRE SOPHIE",
-                            "montant":  "1 656,45 €"
+                            "montant":  "1 656,78 EUR"
                         },
                         {
                             "detail":  "caf",
@@ -919,7 +919,7 @@ window.BUDGET2026 = [
                         {
                             "detail":  "santé",
                             "nom":  "mouvement interne créditeur",
-                            "montant":  "194,07 €"
+                            "montant":  "203,07 EUR"
                         },
                         {
                             "detail":  "vie quotidienne autre",
@@ -936,17 +936,17 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "avril",
-        "revenuTotalFoyer":  "7891,53",
-        "sommeRestante":  "215,8",
-        "depenseTotalCommune":  "7675,73",
+        "revenuTotalFoyer":  "7 945,83 EUR",
+        "sommeRestante":  "-0,21 EUR",
+        "depenseTotalCommune":  "7 946,04 EUR",
         "depenses":  [
                          {
-                             "total":  "3 582,04 €",
+                             "total":  "3 699,68 EUR",
                              "categorie":  "vie quotidienne",
                              "items":  [
                                            {
                                                "nom":  "Alimentation",
-                                               "montant":  "1 026,69 €"
+                                               "montant":  "1 053,31 EUR"
                                            },
                                            {
                                                "nom":  "animaux domestique",
@@ -962,7 +962,7 @@ window.BUDGET2026 = [
                                            },
                                            {
                                                "nom":  "electronique et informatique",
-                                               "montant":  "108,79 €"
+                                               "montant":  "189,90 EUR"
                                            },
                                            {
                                                "nom":  "equipement sportif",
@@ -974,7 +974,7 @@ window.BUDGET2026 = [
                                            },
                                            {
                                                "nom":  "mobilier electro déco",
-                                               "montant":  "1 870,00 €"
+                                               "montant":  "1 879,91 EUR"
                                            },
                                            {
                                                "nom":  "vétement accessoire",
@@ -987,16 +987,16 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "87,34 €",
+                             "total":  "111,31 EUR",
                              "categorie":  "abonnement et téléphonie",
                              "items":  [
                                            {
                                                "nom":  "multimedia a domicile, tv internet",
-                                               "montant":  "68,99 €"
+                                               "montant":  "76,98 EUR"
                                            },
                                            {
                                                "nom":  "telephonie",
-                                               "montant":  "18,35 €"
+                                               "montant":  "34,33 EUR"
                                            }
                                        ]
                          },
@@ -1019,7 +1019,7 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "757,99 €",
+                             "total":  "699,99 EUR",
                              "categorie":  "auto moto",
                              "items":  [
                                            {
@@ -1099,12 +1099,12 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "9,00 €",
+                             "total":  "29,90 EUR",
                              "categorie":  "autre",
                              "items":  [
                                            {
                                                "nom":  "frais banquaire",
-                                               "montant":  "9,00 €"
+                                               "montant":  "29,90 EUR"
                                            }
                                        ]
                          },
@@ -1149,12 +1149,12 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "52,60 €",
+                             "total":  "75,10 EUR",
                              "categorie":  "loisir",
                              "items":  [
                                            {
                                                "nom":  "club association",
-                                               "montant":  "0,00 €"
+                                               "montant":  "22,50 EUR"
                                            },
                                            {
                                                "nom":  "divertissement cultur ciné",
@@ -1167,12 +1167,12 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "296,00 €",
+                             "total":  "381,30 EUR",
                              "categorie":  "mouvement interne débiteur",
                              "items":  [
                                            {
                                                "nom":  "virement de compte a compte",
-                                               "montant":  "296,00 €"
+                                               "montant":  "381,30 EUR"
                                            }
                                        ]
                          },
@@ -1233,7 +1233,7 @@ window.BUDGET2026 = [
                         {
                             "detail":  "santé",
                             "nom":  "mouvement interne créditeur",
-                            "montant":  "299,00 €"
+                            "montant":  "324,30 EUR"
                         },
                         {
                             "detail":  "vie quotidienne autre",
@@ -1244,15 +1244,20 @@ window.BUDGET2026 = [
                             "detail":  "offre bours",
                             "nom":  "mouvement interne créditeur",
                             "montant":  "2,19 €"
+                        },
+                        {
+                            "nom":  "mouvement interne créditeur",
+                            "montant":  "29,00 EUR",
+                            "detail":  "remboursement"
                         }
                     ],
         "titre":  "AVRIL"
     },
     {
         "mois":  "mai",
-        "revenuTotalFoyer":  "6708,78",
-        "sommeRestante":  "403,74",
-        "depenseTotalCommune":  "6305,04",
+        "revenuTotalFoyer":  "6 708,78 EUR",
+        "sommeRestante":  "403,74 EUR",
+        "depenseTotalCommune":  "6 305,04 EUR",
         "depenses":  [
                          {
                              "total":  "1 537,89 €",
@@ -1333,7 +1338,7 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "836,27 €",
+                             "total":  "778,27 EUR",
                              "categorie":  "auto moto",
                              "items":  [
                                            {
@@ -1559,9 +1564,9 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "juin",
-        "revenuTotalFoyer":  "11097,78",
-        "sommeRestante":  "-69,0400000000009",
-        "depenseTotalCommune":  "11166,82",
+        "revenuTotalFoyer":  "11 097,78 EUR",
+        "sommeRestante":  "-69,04 EUR",
+        "depenseTotalCommune":  "11 166,82 EUR",
         "depenses":  [
                          {
                              "total":  "2 800,65 €",
@@ -1642,7 +1647,7 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "1 175,25 €",
+                             "total":  "700,47 EUR",
                              "categorie":  "auto moto",
                              "items":  [
                                            {
@@ -1873,9 +1878,9 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "juillet",
-        "revenuTotalFoyer":  "6364,09",
-        "sommeRestante":  "117,110000000001",
-        "depenseTotalCommune":  "6246,98",
+        "revenuTotalFoyer":  "6 364,09 EUR",
+        "sommeRestante":  "117,11 EUR",
+        "depenseTotalCommune":  "6 246,98 EUR",
         "depenses":  [
                          {
                              "total":  "1 583,47 €",
@@ -1956,7 +1961,7 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "1 654,18 €",
+                             "total":  "1 157,92 EUR",
                              "categorie":  "auto moto",
                              "items":  [
                                            {
@@ -2187,9 +2192,9 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "aout",
-        "revenuTotalFoyer":  "5452,66",
-        "sommeRestante":  "-146,83",
-        "depenseTotalCommune":  "5599,49",
+        "revenuTotalFoyer":  "5 452,66 EUR",
+        "sommeRestante":  "-146,83 EUR",
+        "depenseTotalCommune":  "5 599,49 EUR",
         "depenses":  [
                          {
                              "total":  "1 473,88 €",
@@ -2270,7 +2275,7 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "917,36 €",
+                             "total":  "779,43 EUR",
                              "categorie":  "auto moto",
                              "items":  [
                                            {
@@ -2501,9 +2506,9 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "septembre",
-        "revenuTotalFoyer":  "10460,51",
-        "sommeRestante":  "961,41",
-        "depenseTotalCommune":  "9499,1",
+        "revenuTotalFoyer":  "10 460,51 EUR",
+        "sommeRestante":  "961,41 EUR",
+        "depenseTotalCommune":  "9 499,10 EUR",
         "depenses":  [
                          {
                              "total":  "4 967,70 €",
@@ -2584,7 +2589,7 @@ window.BUDGET2026 = [
                                        ]
                          },
                          {
-                             "total":  "1 193,38 €",
+                             "total":  "956,25 EUR",
                              "categorie":  "auto moto",
                              "items":  [
                                            {
@@ -2815,9 +2820,9 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "octobre",
-        "revenuTotalFoyer":  "0",
-        "sommeRestante":  "0",
-        "depenseTotalCommune":  "0",
+        "revenuTotalFoyer":  "0,00 EUR",
+        "sommeRestante":  "0,00 EUR",
+        "depenseTotalCommune":  "0,00 EUR",
         "depenses":  [
 
                      ],
@@ -2828,9 +2833,9 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "novembre",
-        "revenuTotalFoyer":  "0",
-        "sommeRestante":  "0",
-        "depenseTotalCommune":  "0",
+        "revenuTotalFoyer":  "0,00 EUR",
+        "sommeRestante":  "0,00 EUR",
+        "depenseTotalCommune":  "0,00 EUR",
         "depenses":  [
 
                      ],
@@ -2841,9 +2846,9 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "decembre",
-        "revenuTotalFoyer":  "0",
-        "sommeRestante":  "0",
-        "depenseTotalCommune":  "0",
+        "revenuTotalFoyer":  "0,00 EUR",
+        "sommeRestante":  "0,00 EUR",
+        "depenseTotalCommune":  "0,00 EUR",
         "depenses":  [
 
                      ],
@@ -2852,4 +2857,4 @@ window.BUDGET2026 = [
                     ],
         "titre":  "DECEMBRE"
     }
-]
+];

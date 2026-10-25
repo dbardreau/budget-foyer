@@ -11,3 +11,7 @@ exports/
 *.ofx
 *.qif
 *.csv
+
+# Sauvegardes locales (doublons de data.js)
+*.bak
+*.avant-correction
