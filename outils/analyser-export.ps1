@@ -7,6 +7,7 @@
 
 param(
     [string]$Fichier = '',
+    [string]$Dossier = '',
     [switch]$Categories
 )
 
@@ -20,18 +21,21 @@ $moisNoms = @('', 'janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet
 
 # ---------------------------------------------------------------- lecture CSV
 
+if (-not $Dossier) { $Dossier = Join-Path $racine 'exports' }
+
 if (-not $Fichier) {
-    $candidats = @(Get-ChildItem (Join-Path $racine 'exports') -Filter '*.csv' -File -ErrorAction SilentlyContinue |
-                   Sort-Object LastWriteTime -Descending)
+    $candidats = @(Get-ChildItem $Dossier -Filter '*.csv' -File -ErrorAction SilentlyContinue |
+                   Sort-Object LastWriteTime)
     if ($candidats.Count -eq 0) { throw "Aucun CSV trouve dans exports\. Depose ton export puis relance." }
-    $Fichier = $candidats[0].FullName
-    Write-Host ("  Fichier utilise : {0}" -f (Split-Path -Leaf $Fichier)) -ForegroundColor DarkGray
+    $fichiers = @($candidats | ForEach-Object { $_.FullName })
+} else {
+    $fichiers = @($Fichier)
 }
 
-$octets = [IO.File]::ReadAllBytes($Fichier)
-$utf8Strict = New-Object Text.UTF8Encoding($false, $true)
-try { $texte = $utf8Strict.GetString($octets) } catch { $texte = [Text.Encoding]::GetEncoding(1252).GetString($octets) }
-$texte = $texte.TrimStart([char]0xFEFF)
+Write-Host ""
+foreach ($fe in $fichiers) {
+    Write-Host ("  Fichier lu : {0}" -f (Split-Path -Leaf $fe)) -ForegroundColor DarkGray
+}
 
 # Decoupage respectant les guillemets
 function Split-LigneCsv {
@@ -102,46 +106,75 @@ function Normaliser-Categorie {
     return $n.Trim()
 }
 
-$lignes = @($texte -split "`r?`n" | Where-Object { $_.Trim() -ne '' })
-$entete = Split-LigneCsv $lignes[0]
-Write-Host ""
-Write-Host "  Colonnes detectees : $($entete.Count)" -ForegroundColor DarkGray
-
-# reperage des colonnes par leur nom (tolere les doublons)
-$idx = @{}
-for ($i = 0; $i -lt $entete.Count; $i++) {
-    $nom = (Normaliser-Categorie $entete[$i])
-    if (-not $idx.ContainsKey($nom)) { $idx[$nom] = $i }
+# acces aux colonnes par leur nom (la fonction lit $idx, defini pour chaque fichier)
+function Col {
+    param([string]$Nom)
+    $k = (Normaliser-Categorie $Nom)
+    if ($idx.ContainsKey($k)) { return $idx[$k] }
+    return -1
 }
-function Col { param([string]$Nom) $k = (Normaliser-Categorie $Nom); if ($idx.ContainsKey($k)) { return $idx[$k] } return -1 }
-
-$cDate = Col 'Date Operation'
-$cLib = Col 'Libelle'
-$cCat = Col 'Categorie'
-$cPar = Col 'Categorie Parente'
-$cMon = Col 'Solde'          # 1re colonne "Solde" = montant de l'operation
-$cCompte = Col 'Libelle Compte'
 
 $operations = @()
-for ($l = 1; $l -lt $lignes.Count; $l++) {
-    $c = Split-LigneCsv $lignes[$l]
-    if ($c.Count -lt 7) { continue }
-    $dateTxt = $c[$cDate]
-    $d = [datetime]::MinValue
-    if (-not [datetime]::TryParseExact($dateTxt, 'yyyy-MM-dd', $null, [Globalization.DateTimeStyles]::None, [ref]$d)) {
-        if (-not [datetime]::TryParse($dateTxt, [ref]$d)) { continue }
+foreach ($fe in $fichiers) {
+    $octets = [IO.File]::ReadAllBytes($fe)
+    $utf8Strict = New-Object Text.UTF8Encoding($false, $true)
+    try { $texte = $utf8Strict.GetString($octets) } catch { $texte = [Text.Encoding]::GetEncoding(1252).GetString($octets) }
+    $texte = $texte.TrimStart([char]0xFEFF)
+
+    $lignes = @($texte -split "`r?`n" | Where-Object { $_.Trim() -ne '' })
+    if ($lignes.Count -lt 2) { continue }
+    $entete = Split-LigneCsv $lignes[0]
+
+    # reperage des colonnes par leur nom (tolere les doublons)
+    $idx = @{}
+    for ($i = 0; $i -lt $entete.Count; $i++) {
+        $nom = (Normaliser-Categorie $entete[$i])
+        if (-not $idx.ContainsKey($nom)) { $idx[$nom] = $i }
     }
-    $operations += [pscustomobject]@{
-        Date      = $d
-        Annee     = $d.Year
-        Mois      = $d.Month
-        Libelle   = ($c[$cLib] -replace '\s+', ' ').Trim()
-        Categorie = $c[$cCat].Trim()
-        Parente   = $c[$cPar].Trim()
-        Montant   = (Convert-Montant $c[$cMon])
-        Compte    = $(if ($cCompte -ge 0) { $c[$cCompte].Trim() } else { '' })
+    $cDate = Col 'Date Operation'
+    $cLib = Col 'Libelle'
+    $cCat = Col 'Categorie'
+    $cPar = Col 'Categorie Parente'
+    $cMon = Col 'Solde'          # 1re colonne "Solde" = montant de l'operation
+    $cCompte = Col 'Libelle Compte'
+    if ($cDate -lt 0 -or $cMon -lt 0) { throw "Colonnes 'Date Operation' / 'Solde' introuvables dans $(Split-Path -Leaf $fe)" }
+
+    for ($l = 1; $l -lt $lignes.Count; $l++) {
+        $c = Split-LigneCsv $lignes[$l]
+        if ($c.Count -lt 7) { continue }
+        $dateTxt = $c[$cDate]
+        $d = [datetime]::MinValue
+        if (-not [datetime]::TryParseExact($dateTxt, 'yyyy-MM-dd', $null, [Globalization.DateTimeStyles]::None, [ref]$d)) {
+            if (-not [datetime]::TryParse($dateTxt, [ref]$d)) { continue }
+        }
+        $operations += [pscustomobject]@{
+            Fichier   = (Split-Path -Leaf $fe)
+            Date      = $d
+            Annee     = $d.Year
+            Mois      = $d.Month
+            Libelle   = ($c[$cLib] -replace '\s+', ' ').Trim()
+            Categorie = $c[$cCat].Trim()
+            Parente   = $c[$cPar].Trim()
+            Montant   = (Convert-Montant $c[$cMon])
+            Compte    = $(if ($cCompte -ge 0) { $c[$cCompte].Trim() } else { '' })
+        }
     }
 }
+
+# fusion de plusieurs exports : on garde le plus grand nombre d'occurrences
+# observees dans un meme fichier (si deux exports couvrent la meme periode,
+# une operation identique ne doit pas etre comptee deux fois).
+$avant = $operations.Count
+$operations = @($operations |
+    Group-Object Compte, Date, Libelle, Montant |
+    ForEach-Object {
+        $parFichier = @($_.Group | Group-Object Fichier | Sort-Object Count -Descending)
+        $maximum = 1
+        if ($parFichier.Count -gt 0) { $maximum = $parFichier[0].Count }
+        $_.Group | Select-Object -First $maximum
+    })
+$operations = @($operations | Sort-Object Date)
+$doublons = $avant - $operations.Count
 $operations = @($operations | Sort-Object Date)
 if ($operations.Count -eq 0) { throw "Aucune operation lue dans $Fichier" }
 
