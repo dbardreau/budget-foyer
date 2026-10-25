@@ -118,6 +118,25 @@
         </table>
       </div>
     </div>
+
+    <div class="card">
+      <div class="month-selector" style="margin-bottom:6px">
+        <button id="prevBudgetMonth" class="nav-arrow">‹</button>
+        <h2 id="budgetMonthTitle" style="font-size:18px">—</h2>
+        <button id="nextBudgetMonth" class="nav-arrow">›</button>
+      </div>
+      <h3 style="margin-top:0">Suivi du mois : où en êtes-vous ?</h3>
+      <p class="muted" style="font-size:13px" id="budgetMonthNote"></p>
+      <div class="kpis" id="budgetMonthKpis"></div>
+      <div class="table-wrap">
+        <table class="table" id="budgetMonthTable">
+          <thead>
+            <tr><th>Catégorie</th><th>Budget / mois</th><th>Dépensé</th><th>Reste</th><th>Utilisé</th><th>Statut</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <!-- ============ GRAPHIQUES ============ -->

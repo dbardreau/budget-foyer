@@ -9,6 +9,52 @@ window.BUDGET2026 = [
         "depenseTotalCommune":  "6605,01",
         "depenses":  [
                          {
+                             "total":  "2 195,26 €",
+                             "categorie":  "vie quotidienne",
+                             "items":  [
+                                           {
+                                               "nom":  "Alimentation",
+                                               "montant":  "924,70 €"
+                                           },
+                                           {
+                                               "nom":  "animaux domestique",
+                                               "montant":  "90,20 €"
+                                           },
+                                           {
+                                               "nom":  "bien etre et soin*",
+                                               "montant":  "76,03 €"
+                                           },
+                                           {
+                                               "nom":  "bricolage et jardinage",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "electronique et informatique",
+                                               "montant":  "804,18 €"
+                                           },
+                                           {
+                                               "nom":  "equipement sportif",
+                                               "montant":  "122,47 €"
+                                           },
+                                           {
+                                               "nom":  "livre, cd jouet",
+                                               "montant":  "41,78 €"
+                                           },
+                                           {
+                                               "nom":  "mobilier electro déco",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "vétement accessoire",
+                                               "montant":  "135,90 €"
+                                           },
+                                           {
+                                               "nom":  "vie quotidienne autre",
+                                               "montant":  "0,00 €"
+                                           }
+                                       ]
+                         },
+                         {
                              "total":  "129,22 €",
                              "categorie":  "abonnement et téléphonie",
                              "items":  [
@@ -272,6 +318,52 @@ window.BUDGET2026 = [
         "depenseTotalCommune":  "6443,58",
         "depenses":  [
                          {
+                             "total":  "1 770,00 €",
+                             "categorie":  "vie quotidienne",
+                             "items":  [
+                                           {
+                                               "nom":  "Alimentation",
+                                               "montant":  "1 102,92 €"
+                                           },
+                                           {
+                                               "nom":  "animaux domestique",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "bien etre et soin*",
+                                               "montant":  "138,99 €"
+                                           },
+                                           {
+                                               "nom":  "bricolage et jardinage",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "electronique et informatique",
+                                               "montant":  "93,38 €"
+                                           },
+                                           {
+                                               "nom":  "equipement sportif",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "livre, cd jouet",
+                                               "montant":  "42,64 €"
+                                           },
+                                           {
+                                               "nom":  "mobilier electro déco",
+                                               "montant":  "237,01 €"
+                                           },
+                                           {
+                                               "nom":  "vétement accessoire",
+                                               "montant":  "155,06 €"
+                                           },
+                                           {
+                                               "nom":  "vie quotidienne autre",
+                                               "montant":  "0,00 €"
+                                           }
+                                       ]
+                         },
+                         {
                              "total":  "124,15 €",
                              "categorie":  "abonnement et téléphonie",
                              "items":  [
@@ -534,6 +626,52 @@ window.BUDGET2026 = [
         "sommeRestante":  "-9,64999999999964",
         "depenseTotalCommune":  "5672,23",
         "depenses":  [
+                         {
+                             "total":  "1 835,68 €",
+                             "categorie":  "vie quotidienne",
+                             "items":  [
+                                           {
+                                               "nom":  "Alimentation",
+                                               "montant":  "1 185,62 €"
+                                           },
+                                           {
+                                               "nom":  "animaux domestique",
+                                               "montant":  "336,70 €"
+                                           },
+                                           {
+                                               "nom":  "bien etre et soin*",
+                                               "montant":  "9,00 €"
+                                           },
+                                           {
+                                               "nom":  "bricolage et jardinage",
+                                               "montant":  "124,51 €"
+                                           },
+                                           {
+                                               "nom":  "electronique et informatique",
+                                               "montant":  "129,50 €"
+                                           },
+                                           {
+                                               "nom":  "equipement sportif",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "livre, cd jouet",
+                                               "montant":  "25,36 €"
+                                           },
+                                           {
+                                               "nom":  "mobilier electro déco",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "vétement accessoire",
+                                               "montant":  "24,99 €"
+                                           },
+                                           {
+                                               "nom":  "vie quotidienne autre",
+                                               "montant":  "0,00 €"
+                                           }
+                                       ]
+                         },
                          {
                              "total":  "130,91 €",
                              "categorie":  "abonnement et téléphonie",
@@ -803,6 +941,52 @@ window.BUDGET2026 = [
         "depenseTotalCommune":  "7675,73",
         "depenses":  [
                          {
+                             "total":  "3 582,04 €",
+                             "categorie":  "vie quotidienne",
+                             "items":  [
+                                           {
+                                               "nom":  "Alimentation",
+                                               "montant":  "1 026,69 €"
+                                           },
+                                           {
+                                               "nom":  "animaux domestique",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "bien etre et soin*",
+                                               "montant":  "69,50 €"
+                                           },
+                                           {
+                                               "nom":  "bricolage et jardinage",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "electronique et informatique",
+                                               "montant":  "108,79 €"
+                                           },
+                                           {
+                                               "nom":  "equipement sportif",
+                                               "montant":  "4,99 €"
+                                           },
+                                           {
+                                               "nom":  "livre, cd jouet",
+                                               "montant":  "428,10 €"
+                                           },
+                                           {
+                                               "nom":  "mobilier electro déco",
+                                               "montant":  "1 870,00 €"
+                                           },
+                                           {
+                                               "nom":  "vétement accessoire",
+                                               "montant":  "73,97 €"
+                                           },
+                                           {
+                                               "nom":  "vie quotidienne autre",
+                                               "montant":  "0,00 €"
+                                           }
+                                       ]
+                         },
+                         {
                              "total":  "87,34 €",
                              "categorie":  "abonnement et téléphonie",
                              "items":  [
@@ -1071,6 +1255,52 @@ window.BUDGET2026 = [
         "depenseTotalCommune":  "6305,04",
         "depenses":  [
                          {
+                             "total":  "1 537,89 €",
+                             "categorie":  "vie quotidienne",
+                             "items":  [
+                                           {
+                                               "nom":  "Alimentation",
+                                               "montant":  "1 256,64 €"
+                                           },
+                                           {
+                                               "nom":  "animaux domestique",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "bien etre et soin*",
+                                               "montant":  "4,50 €"
+                                           },
+                                           {
+                                               "nom":  "bricolage et jardinage",
+                                               "montant":  "61,20 €"
+                                           },
+                                           {
+                                               "nom":  "electronique et informatique",
+                                               "montant":  "67,91 €"
+                                           },
+                                           {
+                                               "nom":  "equipement sportif",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "livre, cd jouet",
+                                               "montant":  "30,35 €"
+                                           },
+                                           {
+                                               "nom":  "mobilier electro déco",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "vétement accessoire",
+                                               "montant":  "117,29 €"
+                                           },
+                                           {
+                                               "nom":  "vie quotidienne autre",
+                                               "montant":  "0,00 €"
+                                           }
+                                       ]
+                         },
+                         {
                              "total":  "98,34 €",
                              "categorie":  "abonnement et téléphonie",
                              "items":  [
@@ -1333,6 +1563,52 @@ window.BUDGET2026 = [
         "sommeRestante":  "-69,0400000000009",
         "depenseTotalCommune":  "11166,82",
         "depenses":  [
+                         {
+                             "total":  "2 800,65 €",
+                             "categorie":  "vie quotidienne",
+                             "items":  [
+                                           {
+                                               "nom":  "Alimentation",
+                                               "montant":  "1 047,73 €"
+                                           },
+                                           {
+                                               "nom":  "animaux domestique",
+                                               "montant":  "31,09 €"
+                                           },
+                                           {
+                                               "nom":  "bien etre et soin*",
+                                               "montant":  "169,00 €"
+                                           },
+                                           {
+                                               "nom":  "bricolage et jardinage",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "electronique et informatique",
+                                               "montant":  "54,22 €"
+                                           },
+                                           {
+                                               "nom":  "equipement sportif",
+                                               "montant":  "220,90 €"
+                                           },
+                                           {
+                                               "nom":  "livre, cd jouet",
+                                               "montant":  "118,66 €"
+                                           },
+                                           {
+                                               "nom":  "mobilier electro déco",
+                                               "montant":  "935,79 €"
+                                           },
+                                           {
+                                               "nom":  "vétement accessoire",
+                                               "montant":  "223,26 €"
+                                           },
+                                           {
+                                               "nom":  "vie quotidienne autre",
+                                               "montant":  "0,00 €"
+                                           }
+                                       ]
+                         },
                          {
                              "total":  "145,67 €",
                              "categorie":  "abonnement et téléphonie",
@@ -1602,6 +1878,52 @@ window.BUDGET2026 = [
         "depenseTotalCommune":  "6246,98",
         "depenses":  [
                          {
+                             "total":  "1 583,47 €",
+                             "categorie":  "vie quotidienne",
+                             "items":  [
+                                           {
+                                               "nom":  "Alimentation",
+                                               "montant":  "1 117,86 €"
+                                           },
+                                           {
+                                               "nom":  "animaux domestique",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "bien etre et soin*",
+                                               "montant":  "12,60 €"
+                                           },
+                                           {
+                                               "nom":  "bricolage et jardinage",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "electronique et informatique",
+                                               "montant":  "239,98 €"
+                                           },
+                                           {
+                                               "nom":  "equipement sportif",
+                                               "montant":  "24,98 €"
+                                           },
+                                           {
+                                               "nom":  "livre, cd jouet",
+                                               "montant":  "24,81 €"
+                                           },
+                                           {
+                                               "nom":  "mobilier electro déco",
+                                               "montant":  "77,72 €"
+                                           },
+                                           {
+                                               "nom":  "vétement accessoire",
+                                               "montant":  "85,52 €"
+                                           },
+                                           {
+                                               "nom":  "vie quotidienne autre",
+                                               "montant":  "0,00 €"
+                                           }
+                                       ]
+                         },
+                         {
                              "total":  "149,28 €",
                              "categorie":  "abonnement et téléphonie",
                              "items":  [
@@ -1870,6 +2192,52 @@ window.BUDGET2026 = [
         "depenseTotalCommune":  "5599,49",
         "depenses":  [
                          {
+                             "total":  "1 473,88 €",
+                             "categorie":  "vie quotidienne",
+                             "items":  [
+                                           {
+                                               "nom":  "Alimentation",
+                                               "montant":  "1 129,38 €"
+                                           },
+                                           {
+                                               "nom":  "animaux domestique",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "bien etre et soin*",
+                                               "montant":  "22,00 €"
+                                           },
+                                           {
+                                               "nom":  "bricolage et jardinage",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "electronique et informatique",
+                                               "montant":  "55,54 €"
+                                           },
+                                           {
+                                               "nom":  "equipement sportif",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "livre, cd jouet",
+                                               "montant":  "170,54 €"
+                                           },
+                                           {
+                                               "nom":  "mobilier electro déco",
+                                               "montant":  "69,43 €"
+                                           },
+                                           {
+                                               "nom":  "vétement accessoire",
+                                               "montant":  "24,99 €"
+                                           },
+                                           {
+                                               "nom":  "vie quotidienne autre",
+                                               "montant":  "2,00 €"
+                                           }
+                                       ]
+                         },
+                         {
                              "total":  "117,93 €",
                              "categorie":  "abonnement et téléphonie",
                              "items":  [
@@ -2137,6 +2505,52 @@ window.BUDGET2026 = [
         "sommeRestante":  "961,41",
         "depenseTotalCommune":  "9499,1",
         "depenses":  [
+                         {
+                             "total":  "4 967,70 €",
+                             "categorie":  "vie quotidienne",
+                             "items":  [
+                                           {
+                                               "nom":  "Alimentation",
+                                               "montant":  "845,00 €"
+                                           },
+                                           {
+                                               "nom":  "animaux domestique",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "bien etre et soin*",
+                                               "montant":  "19,40 €"
+                                           },
+                                           {
+                                               "nom":  "bricolage et jardinage",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "electronique et informatique",
+                                               "montant":  "657,09 €"
+                                           },
+                                           {
+                                               "nom":  "equipement sportif",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "livre, cd jouet",
+                                               "montant":  "86,74 €"
+                                           },
+                                           {
+                                               "nom":  "mobilier electro déco",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "vétement accessoire",
+                                               "montant":  "0,00 €"
+                                           },
+                                           {
+                                               "nom":  "vie quotidienne autre",
+                                               "montant":  "3 359,47 €"
+                                           }
+                                       ]
+                         },
                          {
                              "total":  "247,65 €",
                              "categorie":  "abonnement et téléphonie",

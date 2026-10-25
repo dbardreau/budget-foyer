@@ -82,7 +82,7 @@ function cmoney(n){ return fmt(n) + ' €'; }
 function cls(n){ return n<0 ? 'neg' : 'pos'; }
 
 /* ---------- État ---------- */
-const state = { tab:'overview', month:0, year:2026 };
+const state = { tab:'overview', month:new Date().getMonth(), year:2026 };
 let editingKey = null; // {mk, id} quand on modifie une opération existante
 
 /* ============================================================
@@ -181,8 +181,10 @@ async function initStorage(){
     } else if(rawBase && typeof rawBase==='object'){
       for(const y in rawBase){ if(Array.isArray(rawBase[y])) newBase[y] = rawBase[y]; }
     }
-    // complète avec le germe data.js si l'année 2026 n'est pas encore en base
-    if(!newBase['2026'] && Array.isArray(window.BUDGET2026) && window.BUDGET2026.length){
+    // La base 2026 (données statiques) provient toujours de data.js (window.BUDGET2026) :
+    // cela permet de propager les corrections du fichier (ex. réintégration de « vie quotidienne »)
+    // vers Supabase au chargement. Les saisies manuelles vivent dans `ops`, pas dans la base.
+    if(Array.isArray(window.BUDGET2026) && window.BUDGET2026.length){
       newBase['2026'] = window.BUDGET2026;
     }
     baseData = newBase;
@@ -553,18 +555,24 @@ function fixedVariable(){
   return { fixe, variable };
 }
 
-function renderBudget(){
+/* Référence de budget (moyenne mensuelle par catégorie) pour l'année affichée */
+function budgetReference(){
   const year = state.year;
-  const months = MONTHS.slice();                       // les 12 mois de l'année
+  const months = MONTHS.slice();
   const refYear = prevYearFor(year);
   const usePrev = refYear !== null;
   const refMk = usePrev ? yearMonths(refYear).map(m=>m.mois) : months;
+  return { year, refYear, usePrev,
+           refByCat: catTotalsFor(usePrev?refYear:year, refMk),
+           nRef: Math.max(1, refMk.length) };
+}
 
-  const refByCat = catTotalsFor(usePrev?refYear:year, refMk);   // budget de référence
+function renderBudget(){
+  const year = state.year;
+  const { refByCat, refYear, usePrev, nRef } = budgetReference();
+  const months = MONTHS.slice();                       // les 12 mois de l'année
   const curByCat = catTotalsFor(year, months);                  // réel de l'année affichée
-
-  const nRef = Math.max(1, refMk.length);
-  const nCur = Math.max(1, months.length);
+  const nCur = months.length;
 
   // Union des catégories (catégories connues + présentes dans les données)
   const seen = {}; const keys = [];
@@ -607,6 +615,75 @@ function renderBudget(){
       <td class="money">${cmoney(r.refM)}</td>
       <td class="money">${cmoney(r.curM)}</td>
       <td class="money ${r.ecart<=0?'pos':'neg'}">${r.ecart<=0?fmt(r.ecart):'+'+fmt(r.ecart)} €</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join('');
+
+  renderBudgetMonth();
+}
+
+/* Suivi du MOIS EN COURS : budget mensuel vs ce qui est déjà dépensé ce mois-ci */
+function renderBudgetMonth(){
+  const year = state.year;
+  const { refByCat, refYear, usePrev, nRef } = budgetReference();
+  const mk = MONTHS[state.month];
+  const title = MONTHS_FR[state.month] + ' ' + year;
+  const elTitle = document.getElementById('budgetMonthTitle');
+  if(elTitle) elTitle.textContent = title;
+
+  const curByCat = catTotalsFor(year, [mk]);   // dépensé ce mois (base + ajouts)
+
+  // Union des catégories
+  const seen = {}; const keys = [];
+  CATS.forEach(c=>{ const k=norm(c.key); if(!seen[k]){ seen[k]=1; keys.push(k); } });
+  [...Object.keys(refByCat), ...Object.keys(curByCat)].forEach(k=>{ if(!seen[k]){ seen[k]=1; keys.push(k); } });
+
+  let budgetM=0, spentM=0;
+  const rows = keys.map(nk=>{
+    const refM = (refByCat[nk]?refByCat[nk].total:0)/nRef;     // budget mensuel de la catégorie
+    const spent = curByCat[nk]?curByCat[nk].total:0;            // dépensé ce mois
+    budgetM = addAmounts(budgetM, refM);
+    spentM = addAmounts(spentM, spent);
+    const rest = refM - spent;
+    const pct = refM>0 ? Math.round(spent/refM*100) : (spent>0?100:0);
+    const label = (refByCat[nk]&&refByCat[nk].label) || (curByCat[nk]&&curByCat[nk].label) || catMeta(nk).label;
+    return { label, refM, spent, rest, pct };
+  }).sort((a,b)=>b.spent-a.spent);
+
+  const totalPct = budgetM>0 ? Math.round(spentM/budgetM*100) : (spentM>0?100:0);
+  const restTotal = budgetM - spentM;
+
+  const note = document.getElementById('budgetMonthNote');
+  if(note) note.textContent = usePrev
+    ? `Votre budget mensuel de référence (moyenne réelle de ${refYear}) comparé à ce que vous avez dépensé en ${MONTHS_FR[state.month]} ${year}.`
+    : `Votre budget mensuel de référence (moyenne réelle de ${year}) — il deviendra plus parlant dès qu'une année antérieure existera.`;
+
+  const kpis = [
+    {cls:'blue', label:'Budget du mois', val:cmoney(budgetM), sub:'référence mensuelle'},
+    {cls:'red',  label:'Dépensé ce mois', val:cmoney(spentM), sub:title+', ajouts inclus'},
+    {cls: restTotal>=0?'green':'red', label: restTotal>=0?'Reste à dépenser':'Dépassement', val:fmt(Math.abs(restTotal))+' €', sub: restTotal>=0?'sur ce mois':'au-delà du budget'},
+    {cls: totalPct<=100?'violet':'red', label:'Budget consommé', val:totalPct+' %', sub: totalPct<=100?'il reste '+fmt(budgetM-spentM)+' €':'objectif dépassé'},
+  ];
+  document.getElementById('budgetMonthKpis').innerHTML = kpis.map(k=>`
+    <div class="kpi ${k.cls}"><div class="label">${k.label}</div>
+    <div class="val ${k.cls==='red'?'neg':k.cls==='green'?'pos':''}">${k.val}</div>
+    <div class="sub">${k.sub}</div></div>`).join('');
+
+  document.querySelector('#budgetMonthTable tbody').innerHTML = rows.map(r=>{
+    const over = r.spent>r.refM;
+    const color = r.pct>100 ? '#ef4444' : (r.pct>=85 ? '#f59e0b' : '#22c55e');
+    const status = over ? `<span class="tag over">+${fmt(r.spent-r.refM)} €</span>` : `<span class="tag ok">Reste ${fmt(r.refM-r.spent)} €</span>`;
+    return `<tr>
+      <td>${e(r.label)}</td>
+      <td class="money">${cmoney(r.refM)}</td>
+      <td class="money ${over?'neg':''}">${cmoney(r.spent)}</td>
+      <td class="money ${over?'neg':'pos'}">${over?'+'+fmt(r.spent-r.refM):fmt(r.refM-r.spent)} €</td>
+      <td>
+        <div class="bar-wrap" style="min-width:90px;background:#222b3a;border-radius:8px;height:14px;overflow:hidden;display:inline-block;vertical-align:middle">
+          <div class="bar" style="width:${Math.min(100,r.pct)}%;background:${color};height:100%;border-radius:8px;transition:width .4s"></div>
+        </div>
+        <span class="pct muted" style="font-size:11px;margin-left:6px">${r.pct}%</span>
+      </td>
       <td>${status}</td>
     </tr>`;
   }).join('');
@@ -891,6 +968,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
   document.getElementById('prevMonth').onclick=()=>{ state.month=(state.month+11)%12; renderMonth(); };
   document.getElementById('nextMonth').onclick=()=>{ state.month=(state.month+1)%12; renderMonth(); };
+  const bPM=document.getElementById('prevBudgetMonth'), bNM=document.getElementById('nextBudgetMonth');
+  if(bPM) bPM.onclick=()=>{ state.month=(state.month+11)%12; renderBudgetMonth(); };
+  if(bNM) bNM.onclick=()=>{ state.month=(state.month+1)%12; renderBudgetMonth(); };
   document.getElementById('prevYear').onclick=()=>changeYear(-1);
   document.getElementById('nextYear').onclick=()=>changeYear(1);
   document.getElementById('btnAdd').onclick=openModal;
