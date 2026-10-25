@@ -45,19 +45,22 @@ function minBaseYear(){ const a=baseYears(); return a.length ? Math.min.apply(nu
 function maxBaseYear(){ const a=baseYears(); return a.length ? Math.max.apply(null,a) : state.year; }
 
 const CATS = [
-  {key:'abonnement et téléphonie', label:'Abonnement & téléphonie', color:'#4f9cf9'},
-  {key:'voyage et transport',      label:'Voyage & transport',     color:'#a78bfa'},
-  {key:'auto moto',                label:'Auto / Moto',            color:'#f472b6'},
-  {key:'cadeaux et solidarité',    label:'Cadeaux & solidarité',   color:'#f59e0b'},
-  {key:'Opération banquaire',      label:'Opérations bancaires',   color:'#22c55e'},
-  {key:'education et famille',     label:'Éducation & famille',    color:'#34d399'},
-  {key:'autre',                    label:'Autres',                 color:'#94a3b8'},
-  {key:'impots et taxe',           label:'Impôts & taxes',         color:'#ef4444'},
-  {key:'logement',                 label:'Logement',               color:'#38bdf8'},
-  {key:'loisir',                   label:'Loisirs',                color:'#fb7185'},
-  {key:'mouvement interne débiteur',label:'Mouvements internes',   color:'#2dd4bf'},
-  {key:'santé',                    label:'Santé',                  color:'#e879f9'},
-  {key:'vie quotidienne',          label:'Vie quotidienne',        color:'#facc15'},
+  {key:'Vie quotidienne',                      label:'Vie quotidienne',             color:'#facc15'},
+  {key:'Logement',                             label:'Logement',                    color:'#38bdf8'},
+  {key:'Auto & Moto',                          label:'Auto & Moto',                 color:'#f472b6'},
+  {key:'Voyages & Transports',                 label:'Voyages & Transports',        color:'#a78bfa'},
+  {key:'Santé',                                label:'Santé',                       color:'#e879f9'},
+  {key:'Abonnements & téléphonie',             label:'Abonnements & téléphonie',    color:'#4f9cf9'},
+  {key:'Éducation & Famille',                  label:'Éducation & Famille',         color:'#34d399'},
+  {key:'Cadeaux et solidarité',                label:'Cadeaux et solidarité',       color:'#f59e0b'},
+  {key:'Loisirs et sorties',                   label:'Loisirs et sorties',          color:'#fb7185'},
+  {key:'Dépenses d\'épargne',                  label:'Dépenses d\'épargne',         color:'#22c55e'},
+  {key:'Virements émis',                       label:'Virements émis',              color:'#2dd4bf'},
+  {key:'Chèques',                              label:'Chèques',                     color:'#94a3b8'},
+  {key:'Retraits cash',                        label:'Retraits cash',               color:'#84cc16'},
+  {key:'Services financiers & professionnels', label:'Services financiers',         color:'#64748b'},
+  {key:'Impôts et taxes',                      label:'Impôts et taxes',             color:'#ef4444'},
+  {key:'Mouvements internes débiteurs',        label:'Mouvements internes',         color:'#14b8a6'},
 ];
 
 const REVENUE_SOURCES = ['Salaire David','Salaire Sophie','Aides sociales (CAF)','Autre revenu'];
@@ -288,7 +291,7 @@ function baseSomme(month){
 function opsOfYear(year, mk){ return (userOps[String(year)]||{})[mk] || []; }
 /* Opérations du compte commun uniquement (les anciennes n'ont pas de champ compte) */
 function commonOps(list){ return list.filter(o=>(o.compte||'commun')==='commun'); }
-function isInterne(o){ return !!(o && (o.interne===true || /^mouvement interne/.test(norm(o.cat)))); }
+function isInterne(o){ return !!(o && (o.interne===true || /^mouvements? internes?/.test(norm(o.cat)))); }
 
 function emptyEpargneMonth(mk){ return {mois:mk, soldeDebut:null, soldeFin:null, operations:[]}; }
 function epargneMonths(year){
@@ -650,6 +653,9 @@ function revColor(key){
   };
   const k = norm(key);
   if(known[k]) return known[k];
+  // une source générique peut être détaillée : « mouvement interne créditeur · santé »
+  const base = Object.keys(known).find(x => k.startsWith(x + ' '));
+  if(base) return known[base];
   const colors = ['#22c55e','#4f9cf9','#f59e0b','#a78bfa','#f472b6','#2dd4bf','#38bdf8','#34d399'];
   let h=0; for(const ch of k) h=(h*31+ch.charCodeAt(0))>>>0;
   return colors[h % colors.length];
@@ -660,8 +666,13 @@ function commonRevenueGroups(year, mk){
   const w = monthWithOpsFor(year, mk);
   const map = {};
   (w.month.revenus||[]).forEach(r=>{
-    const k = norm(r.nom);
-    if(!map[k]) map[k] = {label:r.nom, items:[], total:0};
+    // Les lignes génériques « mouvement interne créditeur » sont détaillées
+    // (virement reçu, santé, voyage...) pour pouvoir les traiter séparément.
+    const generique = norm(r.nom) === 'mouvement interne crediteur';
+    const detail = (r.detail||'').trim();
+    const k = (generique && detail) ? norm(r.nom)+'|'+norm(detail) : norm(r.nom);
+    const label = (generique && detail) ? r.nom + ' · ' + detail : r.nom;
+    if(!map[k]) map[k] = {label, items:[], total:0};
     const amt = parseAmount(r.montant);
     map[k].total = Math.round((map[k].total+amt)*100)/100;
     map[k].items.push({detail:r.detail||'', amount:amt});
@@ -754,6 +765,9 @@ function revenueTotalsForAcc(year, mk, acc){
    Ce qui est déjà encaissé/dépensé est déduit, le reste est ajouté.
    Seul le « solde reporté » est écarté (c'est un report, pas une ressource). */
 const ROLLOVER_RX = /solde (du )?mois precedent/;
+/* Remboursements (santé, auto, voyage) : ponctuels, jamais récurrents,
+   donc exclus du prévisionnel même s'ils reviennent souvent. */
+const REMBOURSEMENT_RX = /\b(remboursement|sante|voyage|auto)\b/;
 
 /* Mois en cours ou à venir (le prévisionnel n'a de sens que là) */
 function isOpenMonth(year, mi){
@@ -796,8 +810,10 @@ function monthForecastFor(year, mk, acc){
   });
 
   const minMonths = Math.max(2, Math.ceil(n*0.5));
-  const build = (src, actual) => Object.keys(src)
-    .filter(k => src[k].months >= minMonths && !ROLLOVER_RX.test(k) && src[k].total/n >= 1)
+  const build = (src, actual, excludeRx) => Object.keys(src)
+    .filter(k => src[k].months >= minMonths && !ROLLOVER_RX.test(k)
+              && !(excludeRx && (excludeRx.test(k) || excludeRx.test(norm(src[k].label))))
+              && src[k].total/n >= 1)
     .map(k=>{
       const expected = Math.round(src[k].total/n*100)/100;
       const done = actual[k] ? actual[k].total : 0;
@@ -811,7 +827,7 @@ function monthForecastFor(year, mk, acc){
   const revActual = revenueTotalsForAcc(year, mk, acc);
   const revReal = Object.values(revActual).reduce((s,x)=>s+x.total,0);
   const depReal = Object.values(depActual).reduce((s,x)=>s+x.total,0);
-  const revRemaining = build(rev, revActual);
+  const revRemaining = build(rev, revActual, REMBOURSEMENT_RX);
   const depRemaining = build(dep, depActual);
   const sumRev = revRemaining.reduce((s,p)=>s+p.remaining,0);
   const sumDep = depRemaining.reduce((s,p)=>s+p.remaining,0);
@@ -841,7 +857,8 @@ function renderForecast(mk, acc){
     'Prévisionnel de fin de mois — ' + MONTHS_FR[mi] + ' ' + state.year;
   document.getElementById('forecastNote').textContent =
     `Estimation d'après ${f.histLabel} : chaque poste récurrent est attendu à sa moyenne mensuelle, `
-    + `et ce qui est déjà encaissé ou dépensé est déduit. Le solde reporté n'est pas compté.`
+    + `et ce qui est déjà encaissé ou dépensé est déduit. Le solde reporté et les remboursements ponctuels`
+    + ` (santé, auto, voyage) ne sont pas comptés.`
     + (f.forecast < 0
         ? ` Résultat négatif : le mois coûte plus que tes revenus récurrents, il faudra compléter depuis ton épargne (ou réduire un poste).`
         : '');
@@ -1147,14 +1164,14 @@ function renderBudgetMonth(){
 
 /* Regroupement des catégories pour le Sankey et le treemap */
 const CHART_GROUPS = [
-  {label:'Logement',                 color:'#38bdf8', keys:['logement']},
-  {label:'Vie quotidienne',           color:'#facc15', keys:['vie quotidienne']},
-  {label:'Auto & transport',          color:'#a78bfa', keys:['auto moto','voyage et transport']},
-  {label:'Santé',                     color:'#e879f9', keys:['santé']},
-  {label:'Abonnements',               color:'#4f9cf9', keys:['abonnement et téléphonie']},
-  {label:'Loisirs, cadeaux & famille',color:'#fb7185', keys:['loisir','cadeaux et solidarité','education et famille']},
-  {label:'Impôts & frais bancaires',  color:'#ef4444', keys:['impots et taxe','Opération banquaire']},
-  {label:'Virements internes',        color:'#2dd4bf', keys:['mouvement interne débiteur']},
+  {label:'Logement',                 color:'#38bdf8', keys:['Logement']},
+  {label:'Vie quotidienne',           color:'#facc15', keys:['Vie quotidienne']},
+  {label:'Auto & transport',          color:'#a78bfa', keys:['Auto & Moto','Voyages & Transports']},
+  {label:'Santé',                     color:'#e879f9', keys:['Santé']},
+  {label:'Abonnements',               color:'#4f9cf9', keys:['Abonnements & téléphonie']},
+  {label:'Loisirs, cadeaux & famille',color:'#fb7185', keys:['Loisirs et sorties','Cadeaux et solidarité','Éducation & Famille']},
+  {label:'Épargne, virements & frais',color:'#ef4444', keys:['Dépenses d\'épargne','Virements émis','Chèques','Retraits cash','Services financiers & professionnels','Impôts et taxes']},
+  {label:'Virements internes',        color:'#2dd4bf', keys:['Mouvements internes débiteurs']},
 ];
 
 /* Totaux (commun + Livret hors virements internes) d'un mois, pour une année donnée */

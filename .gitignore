@@ -1,4 +1,4 @@
-﻿# Fichiers de l'ancienne version locale WAMP/MySQL (gardés localement, non publiés)
+# Fichiers de l'ancienne version locale WAMP/MySQL (gardés localement, non publiés)
 api.php
 budget.sql
 .htaccess
@@ -14,4 +14,4 @@ exports/
 
 # Sauvegardes locales (doublons de data.js)
 *.bak
-*.avant-correction
+*.avant-*

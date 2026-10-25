@@ -1,268 +1,206 @@
 // Donnees du compte commun 2026.
-// Base : export bancaire du 02/01/2026 au 30/09/2026 (965 operations),
-// corrige et complete par outils\corriger-data.ps1.
+// Categories = celles de l'application bancaire (Vie quotidienne, Logement,
+// Auto & Moto, Voyages & Transports, Sante, Abonnements & telephonie,
+// Education & Famille, Cadeaux et solidarite, Loisirs et sorties,
+// Depenses d'epargne, Virements emis, Cheques, Retraits cash,
+// Services financiers & professionnels, Impots et taxes, Mouvements internes debiteurs).
+// Depenses janvier -> septembre 2026 reconstruites depuis l'export bancaire
+// (965 operations) par outils\adopter-categories-banque.ps1.
 window.BUDGET2026 = [
     {
         "mois":  "janvier",
-        "revenuTotalFoyer":  "6 793,15 EUR",
-        "sommeRestante":  "188,14 EUR",
-        "depenseTotalCommune":  "6 605,01 EUR",
+        "revenuTotalFoyer":  "7 093,15 €",
+        "sommeRestante":  "488,14 €",
+        "depenseTotalCommune":  "6 605,01 €",
         "depenses":  [
                          {
-                             "total":  "2 195,26 €",
-                             "categorie":  "vie quotidienne",
+                             "categorie":  "Vie quotidienne",
+                             "total":  "2 195,26 €",
                              "items":  [
                                            {
                                                "nom":  "Alimentation",
                                                "montant":  "924,70 €"
                                            },
                                            {
-                                               "nom":  "animaux domestique",
-                                               "montant":  "90,20 €"
-                                           },
-                                           {
-                                               "nom":  "bien etre et soin*",
-                                               "montant":  "76,03 €"
-                                           },
-                                           {
-                                               "nom":  "bricolage et jardinage",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "electronique et informatique",
+                                               "nom":  "Electronique et informatique",
                                                "montant":  "804,18 €"
                                            },
                                            {
-                                               "nom":  "equipement sportif",
-                                               "montant":  "122,47 €"
-                                           },
-                                           {
-                                               "nom":  "livre, cd jouet",
-                                               "montant":  "41,78 €"
-                                           },
-                                           {
-                                               "nom":  "mobilier electro déco",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "vétement accessoire",
+                                               "nom":  "Vêtements et accessoires",
                                                "montant":  "135,90 €"
                                            },
                                            {
-                                               "nom":  "vie quotidienne autre",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Equipements sportifs et artistiques",
+                                               "montant":  "122,47 €"
+                                           },
+                                           {
+                                               "nom":  "Animaux domestiques",
+                                               "montant":  "90,20 €"
+                                           },
+                                           {
+                                               "nom":  "Bien-être et soins (coiffeur, parfums…)",
+                                               "montant":  "76,03 €"
+                                           },
+                                           {
+                                               "nom":  "Livres, CD/DVD, bijoux, jouets…",
+                                               "montant":  "41,78 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "129,22 €",
-                             "categorie":  "abonnement et téléphonie",
+                             "categorie":  "Logement",
+                             "total":  "1 157,00 €",
                              "items":  [
                                            {
-                                               "nom":  "multimedia a domicile, tv internet",
-                                               "montant":  "82,98 €"
+                                               "nom":  "Loyers, Charges",
+                                               "montant":  "940,00 €"
                                            },
                                            {
-                                               "nom":  "telephonie",
-                                               "montant":  "46,24 €"
+                                               "nom":  "Energie (électricité, gaz, fuel, chauffage…)",
+                                               "montant":  "217,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "56,90",
-                             "categorie":  "voyage et transport",
-                             "items":  [
-                                           {
-                                               "nom":  "hebergement (hotel, camping,",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "transport quotidien",
-                                               "montant":  "56,90 €"
-                                           },
-                                           {
-                                               "nom":  "agence de voyage",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "847,86 EUR",
-                             "categorie":  "auto moto",
+                             "categorie":  "Auto \u0026 Moto",
+                             "total":  "847,86 €",
                              "items":  [
                                            {
                                                "nom":  "Financement",
                                                "montant":  "360,82 €"
                                            },
                                            {
-                                               "nom":  "assurance auto moto",
-                                               "montant":  "196,84 €"
-                                           },
-                                           {
-                                               "nom":  "carburant",
+                                               "nom":  "Carburant",
                                                "montant":  "200,20 €"
                                            },
                                            {
-                                               "nom":  "entretien réparation",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Assurances (Auto/Moto)",
+                                               "montant":  "196,84 €"
                                            },
                                            {
-                                               "nom":  "contravention",
+                                               "nom":  "Contraventions",
                                                "montant":  "90,00 €"
-                                           },
-                                           {
-                                               "nom":  "auto moto autres",
-                                               "montant":  "0,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "0,00 €",
-                             "categorie":  "cadeaux et solidarité",
+                             "categorie":  "Voyages \u0026 Transports",
+                             "total":  "56,90 €",
                              "items":  [
                                            {
-                                               "nom":  "dont et cadeaux",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Transports quotidiens (métro, bus…)",
+                                               "montant":  "56,90 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "1 237,00 €",
-                             "categorie":  "Opération banquaire",
+                             "categorie":  "Santé",
+                             "total":  "481,47 €",
                              "items":  [
                                            {
-                                               "nom":  "epargne bancaire livret a enfants",
-                                               "montant":  "755,00 €"
+                                               "nom":  "Complémentaires santé",
+                                               "montant":  "407,75 €"
                                            },
                                            {
-                                               "nom":  "crédit conso",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Médecins et frais médicaux",
+                                               "montant":  "65,00 €"
                                            },
                                            {
-                                               "nom":  "virement emis",
+                                               "nom":  "Pharmacie et laboratoire",
+                                               "montant":  "8,72 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Abonnements \u0026 téléphonie",
+                             "total":  "129,22 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Multimedia à domicile (TV, internet, téléphonie…)",
+                                               "montant":  "82,98 €"
+                                           },
+                                           {
+                                               "nom":  "Téléphonie (fixe et mobile)",
+                                               "montant":  "46,24 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Éducation \u0026 Famille",
+                             "total":  "150,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Argent de poche",
+                                               "montant":  "150,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Loisirs et sorties",
+                             "total":  "76,40 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Restaurants, bars, discothèques…",
+                                               "montant":  "49,00 €"
+                                           },
+                                           {
+                                               "nom":  "Club / association (sport, hobby, art…)",
+                                               "montant":  "19,00 €"
+                                           },
+                                           {
+                                               "nom":  "Divertissement - culture (ciné, théâtre, concerts…)",
+                                               "montant":  "8,40 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Dépenses d\u0027épargne",
+                             "total":  "755,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Dépenses d\u0027épargne - Autres",
+                                               "montant":  "500,00 €"
+                                           },
+                                           {
+                                               "nom":  "Epargne bancaire (Livret A, PEL…)",
+                                               "montant":  "255,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Virements émis",
+                             "total":  "482,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Virements émis",
                                                "montant":  "482,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "150,00 €",
-                             "categorie":  "education et famille",
-                             "items":  [
-                                           {
-                                               "nom":  "argent de poche",
-                                               "montant":  "150,00 €"
-                                           },
-                                           {
-                                               "nom":  "autres",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "etudes (formation, fourniture cantine transport",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "pension alimentaire",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
+                             "categorie":  "Services financiers \u0026 professionnels",
                              "total":  "9,90 €",
-                             "categorie":  "autre",
                              "items":  [
                                            {
-                                               "nom":  "frais banquaire",
+                                               "nom":  "Frais bancaires et de gestion (dont agios)",
                                                "montant":  "9,90 €"
                                            }
                                        ]
                          },
                          {
+                             "categorie":  "Impôts et taxes",
                              "total":  "0,00 €",
-                             "categorie":  "impots et taxe",
                              "items":  [
-                                           {
-                                               "nom":  "taxe d\u0027habitation",
-                                               "montant":  "0,00 €"
-                                           }
+
                                        ]
                          },
                          {
-                             "total":  "1 157,00 €",
-                             "categorie":  "logement",
-                             "items":  [
-                                           {
-                                               "nom":  "Assurance habitation et rc",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "eau",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "Energie edf",
-                                               "montant":  "217,00 €"
-                                           },
-                                           {
-                                               "nom":  "frais exeptionnel (déménagement etc)",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "loyer, charges",
-                                               "montant":  "940,00 €"
-                                           },
-                                           {
-                                               "nom":  "travaux réparation entretien",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "76,40 €",
-                             "categorie":  "loisir",
-                             "items":  [
-                                           {
-                                               "nom":  "club association",
-                                               "montant":  "19,00 €"
-                                           },
-                                           {
-                                               "nom":  "divertissement cultur ciné",
-                                               "montant":  "8,40 €"
-                                           },
-                                           {
-                                               "nom":  "restaurant sortie",
-                                               "montant":  "49,00 €"
-                                           }
-                                       ]
-                         },
-                         {
+                             "categorie":  "Mouvements internes débiteurs",
                              "total":  "264,00 €",
-                             "categorie":  "mouvement interne débiteur",
                              "items":  [
                                            {
-                                               "nom":  "virement de compte a compte",
+                                               "nom":  "Virements émis de comptes à comptes",
                                                "montant":  "264,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "481,47 €",
-                             "categorie":  "santé",
-                             "items":  [
-                                           {
-                                               "nom":  "complémentaire santé",
-                                               "montant":  "407,75 €"
-                                           },
-                                           {
-                                               "nom":  "optique, audition",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "medecin et frais médicaux",
-                                               "montant":  "65,00 €"
-                                           },
-                                           {
-                                               "nom":  "pharmacie et labo",
-                                               "montant":  "8,72 €"
                                            }
                                        ]
                          }
@@ -286,7 +224,7 @@ window.BUDGET2026 = [
                         {
                             "detail":  "",
                             "nom":  "solde mois précédent",
-                            "montant":  "-300,00 €"
+                            "montant":  "0,00 €"
                         },
                         {
                             "detail":  "virement reçu",
@@ -313,265 +251,216 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "fevrier",
-        "revenuTotalFoyer":  "6 311,24 EUR",
-        "sommeRestante":  "-132,34 EUR",
-        "depenseTotalCommune":  "6 443,58 EUR",
+        "revenuTotalFoyer":  "6 311,24 €",
+        "sommeRestante":  "-132,34 €",
+        "depenseTotalCommune":  "6 443,58 €",
         "depenses":  [
                          {
-                             "total":  "1 770,00 €",
-                             "categorie":  "vie quotidienne",
+                             "categorie":  "Vie quotidienne",
+                             "total":  "1 770,00 €",
                              "items":  [
                                            {
                                                "nom":  "Alimentation",
-                                               "montant":  "1 102,92 €"
+                                               "montant":  "1 102,92 €"
                                            },
                                            {
-                                               "nom":  "animaux domestique",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "bien etre et soin*",
-                                               "montant":  "138,99 €"
-                                           },
-                                           {
-                                               "nom":  "bricolage et jardinage",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "electronique et informatique",
-                                               "montant":  "93,38 €"
-                                           },
-                                           {
-                                               "nom":  "equipement sportif",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "livre, cd jouet",
-                                               "montant":  "42,64 €"
-                                           },
-                                           {
-                                               "nom":  "mobilier electro déco",
+                                               "nom":  "Mobilier, électroménager, décoration…",
                                                "montant":  "237,01 €"
                                            },
                                            {
-                                               "nom":  "vétement accessoire",
+                                               "nom":  "Vêtements et accessoires",
                                                "montant":  "155,06 €"
                                            },
                                            {
-                                               "nom":  "vie quotidienne autre",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Bien-être et soins (coiffeur, parfums…)",
+                                               "montant":  "138,99 €"
+                                           },
+                                           {
+                                               "nom":  "Electronique et informatique",
+                                               "montant":  "93,38 €"
+                                           },
+                                           {
+                                               "nom":  "Livres, CD/DVD, bijoux, jouets…",
+                                               "montant":  "42,64 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "124,15 €",
-                             "categorie":  "abonnement et téléphonie",
+                             "categorie":  "Logement",
+                             "total":  "1 051,50 €",
                              "items":  [
                                            {
-                                               "nom":  "multimedia a domicile, tv internet",
-                                               "montant":  "110,17 €"
+                                               "nom":  "Loyers, Charges",
+                                               "montant":  "940,00 €"
                                            },
                                            {
-                                               "nom":  "telephonie",
-                                               "montant":  "13,98 €"
+                                               "nom":  "Eau",
+                                               "montant":  "74,50 €"
+                                           },
+                                           {
+                                               "nom":  "Energie (électricité, gaz, fuel, chauffage…)",
+                                               "montant":  "37,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "521,91",
-                             "categorie":  "voyage et transport",
-                             "items":  [
-                                           {
-                                               "nom":  "hebergement (hotel, camping,",
-                                               "montant":  "463,91 €"
-                                           },
-                                           {
-                                               "nom":  "transport quotidien",
-                                               "montant":  "58,00 €"
-                                           },
-                                           {
-                                               "nom":  "agence de voyage",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "1 162,66 EUR",
-                             "categorie":  "auto moto",
+                             "categorie":  "Auto \u0026 Moto",
+                             "total":  "647,65 €",
                              "items":  [
                                            {
                                                "nom":  "Financement",
                                                "montant":  "360,82 €"
                                            },
                                            {
-                                               "nom":  "assurance auto moto",
+                                               "nom":  "Assurances (Auto/Moto)",
                                                "montant":  "198,08 €"
                                            },
                                            {
-                                               "nom":  "carburant",
+                                               "nom":  "Carburant",
                                                "montant":  "80,75 €"
                                            },
                                            {
-                                               "nom":  "entretien réparation",
+                                               "nom":  "Entretien - Réparation",
                                                "montant":  "8,00 €"
-                                           },
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Voyages \u0026 Transports",
+                             "total":  "1 036,92 €",
+                             "items":  [
                                            {
-                                               "nom":  "transport longue distance",
+                                               "nom":  "Transports longue distance (avions, trains…)",
                                                "montant":  "515,01 €"
                                            },
                                            {
-                                               "nom":  "auto moto autres",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Hébergement (hôtels, camping…)",
+                                               "montant":  "463,91 €"
+                                           },
+                                           {
+                                               "nom":  "Transports quotidiens (métro, bus…)",
+                                               "montant":  "58,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "0,00 €",
-                             "categorie":  "cadeaux et solidarité",
+                             "categorie":  "Santé",
+                             "total":  "342,08 €",
                              "items":  [
                                            {
-                                               "nom":  "dont et cadeaux",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Complémentaires santé",
+                                               "montant":  "219,27 €"
+                                           },
+                                           {
+                                               "nom":  "Médecins et frais médicaux",
+                                               "montant":  "75,00 €"
+                                           },
+                                           {
+                                               "nom":  "Pharmacie et laboratoire",
+                                               "montant":  "47,81 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "511,60 €",
-                             "categorie":  "Opération banquaire",
+                             "categorie":  "Abonnements \u0026 téléphonie",
+                             "total":  "124,15 €",
                              "items":  [
                                            {
-                                               "nom":  "epargne bancaire livret a enfants",
+                                               "nom":  "Multimedia à domicile (TV, internet, téléphonie…)",
+                                               "montant":  "110,17 €"
+                                           },
+                                           {
+                                               "nom":  "Téléphonie (fixe et mobile)",
+                                               "montant":  "13,98 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Éducation \u0026 Famille",
+                             "total":  "309,18 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Etudes (formation, fournitures, cantines…)",
+                                               "montant":  "159,18 €"
+                                           },
+                                           {
+                                               "nom":  "Argent de poche",
+                                               "montant":  "150,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Loisirs et sorties",
+                             "total":  "134,60 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Restaurants, bars, discothèques…",
+                                               "montant":  "78,00 €"
+                                           },
+                                           {
+                                               "nom":  "Divertissement - culture (ciné, théâtre, concerts…)",
+                                               "montant":  "34,10 €"
+                                           },
+                                           {
+                                               "nom":  "Club / association (sport, hobby, art…)",
+                                               "montant":  "22,50 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Dépenses d\u0027épargne",
+                             "total":  "255,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Epargne bancaire (Livret A, PEL…)",
                                                "montant":  "255,00 €"
-                                           },
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Chèques",
+                             "total":  "176,60 €",
+                             "items":  [
                                            {
-                                               "nom":  "cheque",
+                                               "nom":  "Chèques",
                                                "montant":  "176,60 €"
-                                           },
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Retraits cash",
+                             "total":  "80,00 €",
+                             "items":  [
                                            {
-                                               "nom":  "retrait",
+                                               "nom":  "Retraits cash",
                                                "montant":  "80,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "309,18 €",
-                             "categorie":  "education et famille",
-                             "items":  [
-                                           {
-                                               "nom":  "argent de poche",
-                                               "montant":  "150,00 €"
-                                           },
-                                           {
-                                               "nom":  "autres",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "etudes (formation, fourniture cantine transport",
-                                               "montant":  "159,18 €"
-                                           },
-                                           {
-                                               "nom":  "pension alimentaire",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
+                             "categorie":  "Services financiers \u0026 professionnels",
                              "total":  "9,90 €",
-                             "categorie":  "autre",
                              "items":  [
                                            {
-                                               "nom":  "frais banquaire",
+                                               "nom":  "Frais bancaires et de gestion (dont agios)",
                                                "montant":  "9,90 €"
                                            }
                                        ]
                          },
                          {
+                             "categorie":  "Impôts et taxes",
                              "total":  "0,00 €",
-                             "categorie":  "impots et taxe",
                              "items":  [
-                                           {
-                                               "nom":  "taxe d\u0027habitation",
-                                               "montant":  "0,00 €"
-                                           }
+
                                        ]
                          },
                          {
-                             "total":  "1 051,50 €",
-                             "categorie":  "logement",
-                             "items":  [
-                                           {
-                                               "nom":  "Assurance habitation et rc",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "eau",
-                                               "montant":  "74,50 €"
-                                           },
-                                           {
-                                               "nom":  "Energie edf",
-                                               "montant":  "37,00 €"
-                                           },
-                                           {
-                                               "nom":  "frais exeptionnel (déménagement etc)",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "loyer, charges",
-                                               "montant":  "940,00 €"
-                                           },
-                                           {
-                                               "nom":  "travaux réparation entretien",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "134,60 €",
-                             "categorie":  "loisir",
-                             "items":  [
-                                           {
-                                               "nom":  "club association",
-                                               "montant":  "22,50 €"
-                                           },
-                                           {
-                                               "nom":  "divertissement cultur ciné",
-                                               "montant":  "34,10 €"
-                                           },
-                                           {
-                                               "nom":  "restaurant sortie",
-                                               "montant":  "78,00 €"
-                                           }
-                                       ]
-                         },
-                         {
+                             "categorie":  "Mouvements internes débiteurs",
                              "total":  "506,00 €",
-                             "categorie":  "mouvement interne débiteur",
                              "items":  [
                                            {
-                                               "nom":  "virement de compte a compte",
+                                               "nom":  "Virements émis de comptes à comptes",
                                                "montant":  "506,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "342,08 €",
-                             "categorie":  "santé",
-                             "items":  [
-                                           {
-                                               "nom":  "complémentaire santé",
-                                               "montant":  "219,27 €"
-                                           },
-                                           {
-                                               "nom":  "optique, audition",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "medecin et frais médicaux",
-                                               "montant":  "75,00 €"
-                                           },
-                                           {
-                                               "nom":  "pharmacie et labo",
-                                               "montant":  "47,81 €"
                                            }
                                        ]
                          }
@@ -622,265 +511,206 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "mars",
-        "revenuTotalFoyer":  "5 671,91 EUR",
-        "sommeRestante":  "-0,32 EUR",
-        "depenseTotalCommune":  "5 672,23 EUR",
+        "revenuTotalFoyer":  "5 671,91 €",
+        "sommeRestante":  "-0,32 €",
+        "depenseTotalCommune":  "5 672,23 €",
         "depenses":  [
                          {
-                             "total":  "1 835,68 €",
-                             "categorie":  "vie quotidienne",
+                             "categorie":  "Vie quotidienne",
+                             "total":  "1 835,68 €",
                              "items":  [
                                            {
                                                "nom":  "Alimentation",
-                                               "montant":  "1 185,62 €"
+                                               "montant":  "1 185,62 €"
                                            },
                                            {
-                                               "nom":  "animaux domestique",
+                                               "nom":  "Animaux domestiques",
                                                "montant":  "336,70 €"
                                            },
                                            {
-                                               "nom":  "bien etre et soin*",
-                                               "montant":  "9,00 €"
-                                           },
-                                           {
-                                               "nom":  "bricolage et jardinage",
-                                               "montant":  "124,51 €"
-                                           },
-                                           {
-                                               "nom":  "electronique et informatique",
+                                               "nom":  "Electronique et informatique",
                                                "montant":  "129,50 €"
                                            },
                                            {
-                                               "nom":  "equipement sportif",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Bricolage et jardinage",
+                                               "montant":  "124,51 €"
                                            },
                                            {
-                                               "nom":  "livre, cd jouet",
+                                               "nom":  "Livres, CD/DVD, bijoux, jouets…",
                                                "montant":  "25,36 €"
                                            },
                                            {
-                                               "nom":  "mobilier electro déco",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "vétement accessoire",
+                                               "nom":  "Vêtements et accessoires",
                                                "montant":  "24,99 €"
                                            },
                                            {
-                                               "nom":  "vie quotidienne autre",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Bien-être et soins (coiffeur, parfums…)",
+                                               "montant":  "9,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "130,91 €",
-                             "categorie":  "abonnement et téléphonie",
+                             "categorie":  "Logement",
+                             "total":  "1 228,50 €",
                              "items":  [
                                            {
-                                               "nom":  "multimedia a domicile, tv internet",
-                                               "montant":  "84,97 €"
+                                               "nom":  "Loyers, Charges",
+                                               "montant":  "940,00 €"
                                            },
                                            {
-                                               "nom":  "telephonie",
-                                               "montant":  "45,94 €"
+                                               "nom":  "Energie (électricité, gaz, fuel, chauffage…)",
+                                               "montant":  "214,00 €"
+                                           },
+                                           {
+                                               "nom":  "Eau",
+                                               "montant":  "74,50 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "58,00",
-                             "categorie":  "voyage et transport",
-                             "items":  [
-                                           {
-                                               "nom":  "hebergement (hotel, camping,",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "transport quotidien",
-                                               "montant":  "58,00 €"
-                                           },
-                                           {
-                                               "nom":  "agence de voyage",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "722,89 EUR",
-                             "categorie":  "auto moto",
+                             "categorie":  "Auto \u0026 Moto",
+                             "total":  "722,89 €",
                              "items":  [
                                            {
                                                "nom":  "Financement",
                                                "montant":  "360,82 €"
                                            },
                                            {
-                                               "nom":  "assurance auto moto",
+                                               "nom":  "Assurances (Auto/Moto)",
                                                "montant":  "219,86 €"
                                            },
                                            {
-                                               "nom":  "carburant",
+                                               "nom":  "Carburant",
                                                "montant":  "142,21 €"
-                                           },
-                                           {
-                                               "nom":  "entretien réparation",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "péage",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "auto moto autres",
-                                               "montant":  "0,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "10,00 €",
-                             "categorie":  "cadeaux et solidarité",
+                             "categorie":  "Voyages \u0026 Transports",
+                             "total":  "58,00 €",
                              "items":  [
                                            {
-                                               "nom":  "dont et cadeaux",
+                                               "nom":  "Transports quotidiens (métro, bus…)",
+                                               "montant":  "58,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Santé",
+                             "total":  "329,05 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Complémentaires santé",
+                                               "montant":  "219,27 €"
+                                           },
+                                           {
+                                               "nom":  "Optique, audition…",
+                                               "montant":  "55,42 €"
+                                           },
+                                           {
+                                               "nom":  "Médecins et frais médicaux",
+                                               "montant":  "54,36 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Abonnements \u0026 téléphonie",
+                             "total":  "130,91 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Multimedia à domicile (TV, internet, téléphonie…)",
+                                               "montant":  "84,97 €"
+                                           },
+                                           {
+                                               "nom":  "Téléphonie (fixe et mobile)",
+                                               "montant":  "45,94 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Éducation \u0026 Famille",
+                             "total":  "150,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Argent de poche",
+                                               "montant":  "150,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Cadeaux et solidarité",
+                             "total":  "10,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Dons et Cadeaux",
                                                "montant":  "10,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "415,00 €",
-                             "categorie":  "Opération banquaire",
+                             "categorie":  "Loisirs et sorties",
+                             "total":  "14,30 €",
                              "items":  [
                                            {
-                                               "nom":  "epargne bancaire livret a enfants",
+                                               "nom":  "Divertissement - culture (ciné, théâtre, concerts…)",
+                                               "montant":  "14,30 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Dépenses d\u0027épargne",
+                             "total":  "255,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Epargne bancaire (Livret A, PEL…)",
                                                "montant":  "255,00 €"
-                                           },
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Virements émis",
+                             "total":  "120,00 €",
+                             "items":  [
                                            {
-                                               "nom":  "cheque",
-                                               "montant":  "40,00 €"
-                                           },
-                                           {
-                                               "nom":  "virement emis",
+                                               "nom":  "Virements émis",
                                                "montant":  "120,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "150,00 €",
-                             "categorie":  "education et famille",
+                             "categorie":  "Chèques",
+                             "total":  "40,00 €",
                              "items":  [
                                            {
-                                               "nom":  "argent de poche",
-                                               "montant":  "150,00 €"
-                                           },
-                                           {
-                                               "nom":  "autres",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "etudes (formation, fourniture cantine transport",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "pension alimentaire",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Chèques",
+                                               "montant":  "40,00 €"
                                            }
                                        ]
                          },
                          {
+                             "categorie":  "Services financiers \u0026 professionnels",
                              "total":  "9,90 €",
-                             "categorie":  "autre",
                              "items":  [
                                            {
-                                               "nom":  "frais banquaire",
+                                               "nom":  "Frais bancaires et de gestion (dont agios)",
                                                "montant":  "9,90 €"
                                            }
                                        ]
                          },
                          {
+                             "categorie":  "Impôts et taxes",
                              "total":  "0,00 €",
-                             "categorie":  "impots et taxe",
                              "items":  [
-                                           {
-                                               "nom":  "taxe d\u0027habitation",
-                                               "montant":  "0,00 €"
-                                           }
+
                                        ]
                          },
                          {
-                             "total":  "1 228,50 €",
-                             "categorie":  "logement",
-                             "items":  [
-                                           {
-                                               "nom":  "Assurance habitation et rc",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "eau",
-                                               "montant":  "74,50 €"
-                                           },
-                                           {
-                                               "nom":  "Energie edf",
-                                               "montant":  "214,00 €"
-                                           },
-                                           {
-                                               "nom":  "frais exeptionnel (déménagement etc)",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "loyer, charges",
-                                               "montant":  "940,00 €"
-                                           },
-                                           {
-                                               "nom":  "travaux réparation entretien",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "14,30 €",
-                             "categorie":  "loisir",
-                             "items":  [
-                                           {
-                                               "nom":  "club association",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "divertissement cultur ciné",
-                                               "montant":  "14,30 €"
-                                           },
-                                           {
-                                               "nom":  "restaurant sortie",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
+                             "categorie":  "Mouvements internes débiteurs",
                              "total":  "768,00 €",
-                             "categorie":  "mouvement interne débiteur",
                              "items":  [
                                            {
-                                               "nom":  "virement de compte a compte",
+                                               "nom":  "Virements émis de comptes à comptes",
                                                "montant":  "768,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "329,05 €",
-                             "categorie":  "santé",
-                             "items":  [
-                                           {
-                                               "nom":  "complémentaire santé",
-                                               "montant":  "219,27 €"
-                                           },
-                                           {
-                                               "nom":  "optique, audition",
-                                               "montant":  "55,42 €"
-                                           },
-                                           {
-                                               "nom":  "medecin et frais médicaux",
-                                               "montant":  "54,36 €"
-                                           },
-                                           {
-                                               "nom":  "pharmacie et labo",
-                                               "montant":  "0,00 €"
                                            }
                                        ]
                          }
@@ -936,265 +766,214 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "avril",
-        "revenuTotalFoyer":  "7 945,83 EUR",
-        "sommeRestante":  "-0,21 EUR",
-        "depenseTotalCommune":  "7 946,04 EUR",
+        "revenuTotalFoyer":  "7 945,83 €",
+        "sommeRestante":  "-0,21 €",
+        "depenseTotalCommune":  "7 946,04 €",
         "depenses":  [
                          {
-                             "total":  "3 699,68 EUR",
-                             "categorie":  "vie quotidienne",
+                             "categorie":  "Vie quotidienne",
+                             "total":  "3 699,68 €",
                              "items":  [
                                            {
+                                               "nom":  "Mobilier, électroménager, décoration…",
+                                               "montant":  "1 879,91 €"
+                                           },
+                                           {
                                                "nom":  "Alimentation",
-                                               "montant":  "1 053,31 EUR"
+                                               "montant":  "1 053,31 €"
                                            },
                                            {
-                                               "nom":  "animaux domestique",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "bien etre et soin*",
-                                               "montant":  "69,50 €"
-                                           },
-                                           {
-                                               "nom":  "bricolage et jardinage",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "electronique et informatique",
-                                               "montant":  "189,90 EUR"
-                                           },
-                                           {
-                                               "nom":  "equipement sportif",
-                                               "montant":  "4,99 €"
-                                           },
-                                           {
-                                               "nom":  "livre, cd jouet",
+                                               "nom":  "Livres, CD/DVD, bijoux, jouets…",
                                                "montant":  "428,10 €"
                                            },
                                            {
-                                               "nom":  "mobilier electro déco",
-                                               "montant":  "1 879,91 EUR"
+                                               "nom":  "Electronique et informatique",
+                                               "montant":  "189,90 €"
                                            },
                                            {
-                                               "nom":  "vétement accessoire",
+                                               "nom":  "Vêtements et accessoires",
                                                "montant":  "73,97 €"
                                            },
                                            {
-                                               "nom":  "vie quotidienne autre",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Bien-être et soins (coiffeur, parfums…)",
+                                               "montant":  "69,50 €"
+                                           },
+                                           {
+                                               "nom":  "Equipements sportifs et artistiques",
+                                               "montant":  "4,99 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "111,31 EUR",
-                             "categorie":  "abonnement et téléphonie",
+                             "categorie":  "Logement",
+                             "total":  "1 238,50 €",
                              "items":  [
                                            {
-                                               "nom":  "multimedia a domicile, tv internet",
-                                               "montant":  "76,98 EUR"
+                                               "nom":  "Loyers, Charges",
+                                               "montant":  "940,00 €"
                                            },
                                            {
-                                               "nom":  "telephonie",
-                                               "montant":  "34,33 EUR"
+                                               "nom":  "Energie (électricité, gaz, fuel, chauffage…)",
+                                               "montant":  "224,00 €"
+                                           },
+                                           {
+                                               "nom":  "Eau",
+                                               "montant":  "74,50 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "58,00",
-                             "categorie":  "voyage et transport",
-                             "items":  [
-                                           {
-                                               "nom":  "hebergement (hotel, camping,",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "transport quotidien",
-                                               "montant":  "58,00 €"
-                                           },
-                                           {
-                                               "nom":  "agence de voyage",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "699,99 EUR",
-                             "categorie":  "auto moto",
+                             "categorie":  "Auto \u0026 Moto",
+                             "total":  "699,99 €",
                              "items":  [
                                            {
                                                "nom":  "Financement",
                                                "montant":  "360,82 €"
                                            },
                                            {
-                                               "nom":  "assurance auto moto",
+                                               "nom":  "Assurances (Auto/Moto)",
                                                "montant":  "258,01 €"
                                            },
                                            {
-                                               "nom":  "carburant",
+                                               "nom":  "Carburant",
                                                "montant":  "71,16 €"
                                            },
                                            {
-                                               "nom":  "entretien réparation",
+                                               "nom":  "Entretien - Réparation",
                                                "montant":  "10,00 €"
-                                           },
-                                           {
-                                               "nom":  "péage",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "auto moto autres",
-                                               "montant":  "0,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "20,00 €",
-                             "categorie":  "cadeaux et solidarité",
+                             "categorie":  "Voyages \u0026 Transports",
+                             "total":  "58,00 €",
                              "items":  [
                                            {
-                                               "nom":  "dont et cadeaux",
+                                               "nom":  "Transports quotidiens (métro, bus…)",
+                                               "montant":  "58,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Santé",
+                             "total":  "421,46 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Complémentaires santé",
+                                               "montant":  "219,27 €"
+                                           },
+                                           {
+                                               "nom":  "Optique, audition…",
+                                               "montant":  "191,29 €"
+                                           },
+                                           {
+                                               "nom":  "Pharmacie et laboratoire",
+                                               "montant":  "10,90 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Abonnements \u0026 téléphonie",
+                             "total":  "111,31 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Multimedia à domicile (TV, internet, téléphonie…)",
+                                               "montant":  "76,98 €"
+                                           },
+                                           {
+                                               "nom":  "Téléphonie (fixe et mobile)",
+                                               "montant":  "34,33 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Éducation \u0026 Famille",
+                             "total":  "230,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Argent de poche",
+                                               "montant":  "230,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Cadeaux et solidarité",
+                             "total":  "20,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Dons et Cadeaux",
                                                "montant":  "20,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "980,80 €",
-                             "categorie":  "Opération banquaire",
+                             "categorie":  "Loisirs et sorties",
+                             "total":  "75,10 €",
                              "items":  [
                                            {
-                                               "nom":  "epargne bancaire livret a enfants",
+                                               "nom":  "Restaurants, bars, discothèques…",
+                                               "montant":  "52,60 €"
+                                           },
+                                           {
+                                               "nom":  "Club / association (sport, hobby, art…)",
+                                               "montant":  "22,50 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Dépenses d\u0027épargne",
+                             "total":  "255,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Epargne bancaire (Livret A, PEL…)",
                                                "montant":  "255,00 €"
-                                           },
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Virements émis",
+                             "total":  "125,80 €",
+                             "items":  [
                                            {
-                                               "nom":  "retrait cash",
-                                               "montant":  "600,00 €"
-                                           },
-                                           {
-                                               "nom":  "virement emis",
+                                               "nom":  "Virements émis",
                                                "montant":  "125,80 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "230,00 €",
-                             "categorie":  "education et famille",
+                             "categorie":  "Retraits cash",
+                             "total":  "600,00 €",
                              "items":  [
                                            {
-                                               "nom":  "argent de poche",
-                                               "montant":  "230,00 €"
-                                           },
-                                           {
-                                               "nom":  "autres",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "etudes (formation, fourniture cantine transport",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "pension alimentaire",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Retraits cash",
+                                               "montant":  "600,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "29,90 EUR",
-                             "categorie":  "autre",
+                             "categorie":  "Services financiers \u0026 professionnels",
+                             "total":  "29,90 €",
                              "items":  [
                                            {
-                                               "nom":  "frais banquaire",
-                                               "montant":  "29,90 EUR"
+                                               "nom":  "Frais bancaires et de gestion (dont agios)",
+                                               "montant":  "29,90 €"
                                            }
                                        ]
                          },
                          {
+                             "categorie":  "Impôts et taxes",
                              "total":  "0,00 €",
-                             "categorie":  "impots et taxe",
                              "items":  [
-                                           {
-                                               "nom":  "taxe d\u0027habitation",
-                                               "montant":  "0,00 €"
-                                           }
+
                                        ]
                          },
                          {
-                             "total":  "1 238,50 €",
-                             "categorie":  "logement",
+                             "categorie":  "Mouvements internes débiteurs",
+                             "total":  "381,30 €",
                              "items":  [
                                            {
-                                               "nom":  "Assurance habitation et rc",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "eau",
-                                               "montant":  "74,50 €"
-                                           },
-                                           {
-                                               "nom":  "Energie edf",
-                                               "montant":  "224,00 €"
-                                           },
-                                           {
-                                               "nom":  "frais exeptionnel (déménagement etc)",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "loyer, charges",
-                                               "montant":  "940,00 €"
-                                           },
-                                           {
-                                               "nom":  "travaux réparation entretien",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "75,10 EUR",
-                             "categorie":  "loisir",
-                             "items":  [
-                                           {
-                                               "nom":  "club association",
-                                               "montant":  "22,50 EUR"
-                                           },
-                                           {
-                                               "nom":  "divertissement cultur ciné",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "restaurant sortie",
-                                               "montant":  "52,60 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "381,30 EUR",
-                             "categorie":  "mouvement interne débiteur",
-                             "items":  [
-                                           {
-                                               "nom":  "virement de compte a compte",
-                                               "montant":  "381,30 EUR"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "421,46 €",
-                             "categorie":  "santé",
-                             "items":  [
-                                           {
-                                               "nom":  "complémentaire santé",
-                                               "montant":  "219,27 €"
-                                           },
-                                           {
-                                               "nom":  "optique, audition",
-                                               "montant":  "191,29 €"
-                                           },
-                                           {
-                                               "nom":  "medecin et frais médicaux",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "pharmacie et labo",
-                                               "montant":  "10,90 €"
+                                               "nom":  "Virements émis de comptes à comptes",
+                                               "montant":  "381,30 €"
                                            }
                                        ]
                          }
@@ -1255,265 +1034,216 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "mai",
-        "revenuTotalFoyer":  "6 708,78 EUR",
-        "sommeRestante":  "403,74 EUR",
-        "depenseTotalCommune":  "6 305,04 EUR",
+        "revenuTotalFoyer":  "6 708,78 €",
+        "sommeRestante":  "403,74 €",
+        "depenseTotalCommune":  "6 305,04 €",
         "depenses":  [
                          {
-                             "total":  "1 537,89 €",
-                             "categorie":  "vie quotidienne",
+                             "categorie":  "Vie quotidienne",
+                             "total":  "1 537,89 €",
                              "items":  [
                                            {
                                                "nom":  "Alimentation",
-                                               "montant":  "1 256,64 €"
+                                               "montant":  "1 256,64 €"
                                            },
                                            {
-                                               "nom":  "animaux domestique",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "bien etre et soin*",
-                                               "montant":  "4,50 €"
-                                           },
-                                           {
-                                               "nom":  "bricolage et jardinage",
-                                               "montant":  "61,20 €"
-                                           },
-                                           {
-                                               "nom":  "electronique et informatique",
-                                               "montant":  "67,91 €"
-                                           },
-                                           {
-                                               "nom":  "equipement sportif",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "livre, cd jouet",
-                                               "montant":  "30,35 €"
-                                           },
-                                           {
-                                               "nom":  "mobilier electro déco",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "vétement accessoire",
+                                               "nom":  "Vêtements et accessoires",
                                                "montant":  "117,29 €"
                                            },
                                            {
-                                               "nom":  "vie quotidienne autre",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Electronique et informatique",
+                                               "montant":  "67,91 €"
+                                           },
+                                           {
+                                               "nom":  "Bricolage et jardinage",
+                                               "montant":  "61,20 €"
+                                           },
+                                           {
+                                               "nom":  "Livres, CD/DVD, bijoux, jouets…",
+                                               "montant":  "30,35 €"
+                                           },
+                                           {
+                                               "nom":  "Bien-être et soins (coiffeur, parfums…)",
+                                               "montant":  "4,50 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "98,34 €",
-                             "categorie":  "abonnement et téléphonie",
+                             "categorie":  "Logement",
+                             "total":  "1 238,50 €",
                              "items":  [
                                            {
-                                               "nom":  "multimedia a domicile, tv internet",
-                                               "montant":  "68,99 €"
+                                               "nom":  "Loyers, Charges",
+                                               "montant":  "940,00 €"
                                            },
                                            {
-                                               "nom":  "telephonie",
-                                               "montant":  "29,35 €"
+                                               "nom":  "Energie (électricité, gaz, fuel, chauffage…)",
+                                               "montant":  "224,00 €"
+                                           },
+                                           {
+                                               "nom":  "Eau",
+                                               "montant":  "74,50 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "58,00",
-                             "categorie":  "voyage et transport",
-                             "items":  [
-                                           {
-                                               "nom":  "hebergement (hotel, camping,",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "transport quotidien",
-                                               "montant":  "58,00 €"
-                                           },
-                                           {
-                                               "nom":  "agence de voyage",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "778,27 EUR",
-                             "categorie":  "auto moto",
+                             "categorie":  "Auto \u0026 Moto",
+                             "total":  "778,27 €",
                              "items":  [
                                            {
                                                "nom":  "Financement",
                                                "montant":  "360,82 €"
                                            },
                                            {
-                                               "nom":  "assurance auto moto",
+                                               "nom":  "Assurances (Auto/Moto)",
                                                "montant":  "258,05 €"
                                            },
                                            {
-                                               "nom":  "carburant",
+                                               "nom":  "Carburant",
                                                "montant":  "155,20 €"
                                            },
                                            {
-                                               "nom":  "entretien réparation",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "parking",
+                                               "nom":  "Parking",
                                                "montant":  "4,20 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Voyages \u0026 Transports",
+                             "total":  "58,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Transports quotidiens (métro, bus…)",
+                                               "montant":  "58,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Santé",
+                             "total":  "526,72 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Médecins et frais médicaux",
+                                               "montant":  "257,00 €"
                                            },
                                            {
-                                               "nom":  "auto moto autres",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Complémentaires santé",
+                                               "montant":  "219,27 €"
+                                           },
+                                           {
+                                               "nom":  "Optique, audition…",
+                                               "montant":  "48,00 €"
+                                           },
+                                           {
+                                               "nom":  "Pharmacie et laboratoire",
+                                               "montant":  "2,45 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "0,00 €",
-                             "categorie":  "cadeaux et solidarité",
+                             "categorie":  "Abonnements \u0026 téléphonie",
+                             "total":  "98,34 €",
                              "items":  [
                                            {
-                                               "nom":  "dont et cadeaux",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Multimedia à domicile (TV, internet, téléphonie…)",
+                                               "montant":  "68,99 €"
+                                           },
+                                           {
+                                               "nom":  "Téléphonie (fixe et mobile)",
+                                               "montant":  "29,35 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "729,00 €",
-                             "categorie":  "Opération banquaire",
+                             "categorie":  "Éducation \u0026 Famille",
+                             "total":  "840,15 €",
                              "items":  [
                                            {
-                                               "nom":  "epargne bancaire livret a enfants",
+                                               "nom":  "Etudes (formation, fournitures, cantines…)",
+                                               "montant":  "590,00 €"
+                                           },
+                                           {
+                                               "nom":  "Argent de poche",
+                                               "montant":  "230,00 €"
+                                           },
+                                           {
+                                               "nom":  "Education \u0026 Famille - Autres",
+                                               "montant":  "20,15 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Loisirs et sorties",
+                             "total":  "116,27 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Restaurants, bars, discothèques…",
+                                               "montant":  "52,67 €"
+                                           },
+                                           {
+                                               "nom":  "Club / association (sport, hobby, art…)",
+                                               "montant":  "41,00 €"
+                                           },
+                                           {
+                                               "nom":  "Divertissement - culture (ciné, théâtre, concerts…)",
+                                               "montant":  "22,60 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Dépenses d\u0027épargne",
+                             "total":  "240,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Epargne bancaire (Livret A, PEL…)",
                                                "montant":  "240,00 €"
-                                           },
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Virements émis",
+                             "total":  "179,00 €",
+                             "items":  [
                                            {
-                                               "nom":  "retrait",
-                                               "montant":  "310,00 €"
-                                           },
-                                           {
-                                               "nom":  "virement emis",
+                                               "nom":  "Virements émis",
                                                "montant":  "179,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "840,15 €",
-                             "categorie":  "education et famille",
+                             "categorie":  "Retraits cash",
+                             "total":  "310,00 €",
                              "items":  [
                                            {
-                                               "nom":  "argent de poche",
-                                               "montant":  "230,00 €"
-                                           },
-                                           {
-                                               "nom":  "autres",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "etudes (formation, fourniture cantine transport",
-                                               "montant":  "20,15 €"
-                                           },
-                                           {
-                                               "nom":  "cgos",
-                                               "montant":  "590,00 €"
+                                               "nom":  "Retraits cash",
+                                               "montant":  "310,00 €"
                                            }
                                        ]
                          },
                          {
+                             "categorie":  "Services financiers \u0026 professionnels",
                              "total":  "9,90 €",
-                             "categorie":  "autre",
                              "items":  [
                                            {
-                                               "nom":  "frais banquaire",
+                                               "nom":  "Frais bancaires et de gestion (dont agios)",
                                                "montant":  "9,90 €"
                                            }
                                        ]
                          },
                          {
+                             "categorie":  "Impôts et taxes",
                              "total":  "0,00 €",
-                             "categorie":  "impots et taxe",
                              "items":  [
-                                           {
-                                               "nom":  "taxe d\u0027habitation",
-                                               "montant":  "0,00 €"
-                                           }
+
                                        ]
                          },
                          {
-                             "total":  "1 238,50 €",
-                             "categorie":  "logement",
-                             "items":  [
-                                           {
-                                               "nom":  "Assurance habitation et rc",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "eau",
-                                               "montant":  "74,50 €"
-                                           },
-                                           {
-                                               "nom":  "Energie edf",
-                                               "montant":  "224,00 €"
-                                           },
-                                           {
-                                               "nom":  "frais exeptionnel (déménagement etc)",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "loyer, charges",
-                                               "montant":  "940,00 €"
-                                           },
-                                           {
-                                               "nom":  "travaux réparation entretien",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "116,27 €",
-                             "categorie":  "loisir",
-                             "items":  [
-                                           {
-                                               "nom":  "club association",
-                                               "montant":  "41,00 €"
-                                           },
-                                           {
-                                               "nom":  "divertissement cultur ciné",
-                                               "montant":  "22,60 €"
-                                           },
-                                           {
-                                               "nom":  "restaurant sortie",
-                                               "montant":  "52,67 €"
-                                           }
-                                       ]
-                         },
-                         {
+                             "categorie":  "Mouvements internes débiteurs",
                              "total":  "372,00 €",
-                             "categorie":  "mouvement interne débiteur",
                              "items":  [
                                            {
-                                               "nom":  "virement de compte a compte",
+                                               "nom":  "Virements émis de comptes à comptes",
                                                "montant":  "372,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "526,72 €",
-                             "categorie":  "santé",
-                             "items":  [
-                                           {
-                                               "nom":  "complémentaire santé",
-                                               "montant":  "219,27 €"
-                                           },
-                                           {
-                                               "nom":  "optique, audition",
-                                               "montant":  "48,00 €"
-                                           },
-                                           {
-                                               "nom":  "medecin et frais médicaux",
-                                               "montant":  "257,00 €"
-                                           },
-                                           {
-                                               "nom":  "pharmacie et labo",
-                                               "montant":  "2,45 €"
                                            }
                                        ]
                          }
@@ -1564,265 +1294,230 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "juin",
-        "revenuTotalFoyer":  "11 097,78 EUR",
-        "sommeRestante":  "-69,04 EUR",
-        "depenseTotalCommune":  "11 166,82 EUR",
+        "revenuTotalFoyer":  "10 797,78 €",
+        "sommeRestante":  "-369,04 €",
+        "depenseTotalCommune":  "11 166,82 €",
         "depenses":  [
                          {
-                             "total":  "2 800,65 €",
-                             "categorie":  "vie quotidienne",
+                             "categorie":  "Vie quotidienne",
+                             "total":  "2 800,65 €",
                              "items":  [
                                            {
                                                "nom":  "Alimentation",
-                                               "montant":  "1 047,73 €"
+                                               "montant":  "1 047,73 €"
                                            },
                                            {
-                                               "nom":  "animaux domestique",
-                                               "montant":  "31,09 €"
-                                           },
-                                           {
-                                               "nom":  "bien etre et soin*",
-                                               "montant":  "169,00 €"
-                                           },
-                                           {
-                                               "nom":  "bricolage et jardinage",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "electronique et informatique",
-                                               "montant":  "54,22 €"
-                                           },
-                                           {
-                                               "nom":  "equipement sportif",
-                                               "montant":  "220,90 €"
-                                           },
-                                           {
-                                               "nom":  "livre, cd jouet",
-                                               "montant":  "118,66 €"
-                                           },
-                                           {
-                                               "nom":  "mobilier electro déco",
+                                               "nom":  "Mobilier, électroménager, décoration…",
                                                "montant":  "935,79 €"
                                            },
                                            {
-                                               "nom":  "vétement accessoire",
+                                               "nom":  "Vêtements et accessoires",
                                                "montant":  "223,26 €"
                                            },
                                            {
-                                               "nom":  "vie quotidienne autre",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Equipements sportifs et artistiques",
+                                               "montant":  "220,90 €"
+                                           },
+                                           {
+                                               "nom":  "Bien-être et soins (coiffeur, parfums…)",
+                                               "montant":  "169,00 €"
+                                           },
+                                           {
+                                               "nom":  "Livres, CD/DVD, bijoux, jouets…",
+                                               "montant":  "118,66 €"
+                                           },
+                                           {
+                                               "nom":  "Electronique et informatique",
+                                               "montant":  "54,22 €"
+                                           },
+                                           {
+                                               "nom":  "Animaux domestiques",
+                                               "montant":  "31,09 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "145,67 €",
-                             "categorie":  "abonnement et téléphonie",
+                             "categorie":  "Logement",
+                             "total":  "1 238,50 €",
                              "items":  [
                                            {
-                                               "nom":  "multimedia a domicile, tv internet",
-                                               "montant":  "84,97 €"
+                                               "nom":  "Loyers, Charges",
+                                               "montant":  "940,00 €"
                                            },
                                            {
-                                               "nom":  "telephonie",
-                                               "montant":  "60,70 €"
+                                               "nom":  "Energie (électricité, gaz, fuel, chauffage…)",
+                                               "montant":  "224,00 €"
+                                           },
+                                           {
+                                               "nom":  "Eau",
+                                               "montant":  "74,50 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "474,78",
-                             "categorie":  "voyage et transport",
-                             "items":  [
-                                           {
-                                               "nom":  "hebergement (hotel, camping,",
-                                               "montant":  "416,78 €"
-                                           },
-                                           {
-                                               "nom":  "transport quotidien",
-                                               "montant":  "58,00 €"
-                                           },
-                                           {
-                                               "nom":  "agence de voyage",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "700,47 EUR",
-                             "categorie":  "auto moto",
+                             "categorie":  "Auto \u0026 Moto",
+                             "total":  "700,47 €",
                              "items":  [
                                            {
                                                "nom":  "Financement",
                                                "montant":  "360,82 €"
                                            },
                                            {
-                                               "nom":  "assurance auto moto",
+                                               "nom":  "Assurances (Auto/Moto)",
                                                "montant":  "248,76 €"
                                            },
                                            {
-                                               "nom":  "carburant",
+                                               "nom":  "Carburant",
                                                "montant":  "82,89 €"
                                            },
                                            {
-                                               "nom":  "entretien réparation",
+                                               "nom":  "Entretien - Réparation",
                                                "montant":  "8,00 €"
-                                           },
-                                           {
-                                               "nom":  "péage",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "auto moto autres",
-                                               "montant":  "0,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "19,90 €",
-                             "categorie":  "cadeaux et solidarité",
+                             "categorie":  "Voyages \u0026 Transports",
+                             "total":  "474,78 €",
                              "items":  [
                                            {
-                                               "nom":  "dont et cadeaux",
+                                               "nom":  "Hébergement (hôtels, camping…)",
+                                               "montant":  "416,78 €"
+                                           },
+                                           {
+                                               "nom":  "Transports quotidiens (métro, bus…)",
+                                               "montant":  "58,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Santé",
+                             "total":  "347,12 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Complémentaires santé",
+                                               "montant":  "219,27 €"
+                                           },
+                                           {
+                                               "nom":  "Médecins et frais médicaux",
+                                               "montant":  "60,00 €"
+                                           },
+                                           {
+                                               "nom":  "Optique, audition…",
+                                               "montant":  "48,00 €"
+                                           },
+                                           {
+                                               "nom":  "Pharmacie et laboratoire",
+                                               "montant":  "19,85 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Abonnements \u0026 téléphonie",
+                             "total":  "145,67 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Multimedia à domicile (TV, internet, téléphonie…)",
+                                               "montant":  "84,97 €"
+                                           },
+                                           {
+                                               "nom":  "Téléphonie (fixe et mobile)",
+                                               "montant":  "60,70 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Éducation \u0026 Famille",
+                             "total":  "340,76 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Argent de poche",
+                                               "montant":  "230,00 €"
+                                           },
+                                           {
+                                               "nom":  "Etudes (formation, fournitures, cantines…)",
+                                               "montant":  "110,76 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Cadeaux et solidarité",
+                             "total":  "19,90 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Dons et Cadeaux",
                                                "montant":  "19,90 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "931,80 €",
-                             "categorie":  "Opération banquaire",
+                             "categorie":  "Loisirs et sorties",
+                             "total":  "200,32 €",
                              "items":  [
                                            {
-                                               "nom":  "epargne bancaire livret a enfants",
+                                               "nom":  "Restaurants, bars, discothèques…",
+                                               "montant":  "196,32 €"
+                                           },
+                                           {
+                                               "nom":  "Club / association (sport, hobby, art…)",
+                                               "montant":  "4,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Dépenses d\u0027épargne",
+                             "total":  "540,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Epargne bancaire (Livret A, PEL…)",
                                                "montant":  "540,00 €"
-                                           },
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Chèques",
+                             "total":  "190,00 €",
+                             "items":  [
                                            {
-                                               "nom":  "chéque",
+                                               "nom":  "Chèques",
                                                "montant":  "190,00 €"
-                                           },
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Retraits cash",
+                             "total":  "201,80 €",
+                             "items":  [
                                            {
-                                               "nom":  "retrait",
+                                               "nom":  "Retraits cash",
                                                "montant":  "201,80 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "340,76 €",
-                             "categorie":  "education et famille",
-                             "items":  [
-                                           {
-                                               "nom":  "argent de poche",
-                                               "montant":  "230,00 €"
-                                           },
-                                           {
-                                               "nom":  "autres",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "etudes (formation, fourniture cantine transport",
-                                               "montant":  "110,76 €"
-                                           },
-                                           {
-                                               "nom":  "pension alimentaire",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
+                             "categorie":  "Services financiers \u0026 professionnels",
                              "total":  "9,90 €",
-                             "categorie":  "autre",
                              "items":  [
                                            {
-                                               "nom":  "frais banquaire",
+                                               "nom":  "Frais bancaires et de gestion (dont agios)",
                                                "montant":  "9,90 €"
                                            }
                                        ]
                          },
                          {
+                             "categorie":  "Impôts et taxes",
                              "total":  "0,00 €",
-                             "categorie":  "impots et taxe",
                              "items":  [
-                                           {
-                                               "nom":  "taxe d\u0027habitation",
-                                               "montant":  "0,00 €"
-                                           }
+
                                        ]
                          },
                          {
-                             "total":  "1 238,50 €",
-                             "categorie":  "logement",
+                             "categorie":  "Mouvements internes débiteurs",
+                             "total":  "3 956,95 €",
                              "items":  [
                                            {
-                                               "nom":  "Assurance habitation et rc",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "eau",
-                                               "montant":  "74,50 €"
-                                           },
-                                           {
-                                               "nom":  "Energie edf",
-                                               "montant":  "224,00 €"
-                                           },
-                                           {
-                                               "nom":  "frais exeptionnel (déménagement etc)",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "loyer, charges",
-                                               "montant":  "940,00 €"
-                                           },
-                                           {
-                                               "nom":  "travaux réparation entretien",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "200,32 €",
-                             "categorie":  "loisir",
-                             "items":  [
-                                           {
-                                               "nom":  "club association",
-                                               "montant":  "4,00 €"
-                                           },
-                                           {
-                                               "nom":  "divertissement cultur ciné",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "restaurant sortie",
-                                               "montant":  "196,32 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "3 956,95 €",
-                             "categorie":  "mouvement interne débiteur",
-                             "items":  [
-                                           {
-                                               "nom":  "virement de compte a compte",
-                                               "montant":  "3 956,95 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "347,12 €",
-                             "categorie":  "santé",
-                             "items":  [
-                                           {
-                                               "nom":  "complémentaire santé",
-                                               "montant":  "219,27 €"
-                                           },
-                                           {
-                                               "nom":  "optique, audition",
-                                               "montant":  "48,00 €"
-                                           },
-                                           {
-                                               "nom":  "medecin et frais médicaux",
-                                               "montant":  "60,00 €"
-                                           },
-                                           {
-                                               "nom":  "pharmacie et labo",
-                                               "montant":  "19,85 €"
+                                               "nom":  "Virements émis de comptes à comptes",
+                                               "montant":  "3 956,95 €"
                                            }
                                        ]
                          }
@@ -1846,7 +1541,7 @@ window.BUDGET2026 = [
                         {
                             "detail":  "",
                             "nom":  "solde mois précédent",
-                            "montant":  "300,00 €"
+                            "montant":  "0,00 €"
                         },
                         {
                             "detail":  "virement reçu",
@@ -1878,265 +1573,214 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "juillet",
-        "revenuTotalFoyer":  "6 364,09 EUR",
-        "sommeRestante":  "117,11 EUR",
-        "depenseTotalCommune":  "6 246,98 EUR",
+        "revenuTotalFoyer":  "6 364,09 €",
+        "sommeRestante":  "117,11 €",
+        "depenseTotalCommune":  "6 246,98 €",
         "depenses":  [
                          {
-                             "total":  "1 583,47 €",
-                             "categorie":  "vie quotidienne",
+                             "categorie":  "Vie quotidienne",
+                             "total":  "1 583,47 €",
                              "items":  [
                                            {
                                                "nom":  "Alimentation",
-                                               "montant":  "1 117,86 €"
+                                               "montant":  "1 117,86 €"
                                            },
                                            {
-                                               "nom":  "animaux domestique",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "bien etre et soin*",
-                                               "montant":  "12,60 €"
-                                           },
-                                           {
-                                               "nom":  "bricolage et jardinage",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "electronique et informatique",
+                                               "nom":  "Electronique et informatique",
                                                "montant":  "239,98 €"
                                            },
                                            {
-                                               "nom":  "equipement sportif",
-                                               "montant":  "24,98 €"
-                                           },
-                                           {
-                                               "nom":  "livre, cd jouet",
-                                               "montant":  "24,81 €"
-                                           },
-                                           {
-                                               "nom":  "mobilier electro déco",
-                                               "montant":  "77,72 €"
-                                           },
-                                           {
-                                               "nom":  "vétement accessoire",
+                                               "nom":  "Vêtements et accessoires",
                                                "montant":  "85,52 €"
                                            },
                                            {
-                                               "nom":  "vie quotidienne autre",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Mobilier, électroménager, décoration…",
+                                               "montant":  "77,72 €"
+                                           },
+                                           {
+                                               "nom":  "Equipements sportifs et artistiques",
+                                               "montant":  "24,98 €"
+                                           },
+                                           {
+                                               "nom":  "Livres, CD/DVD, bijoux, jouets…",
+                                               "montant":  "24,81 €"
+                                           },
+                                           {
+                                               "nom":  "Bien-être et soins (coiffeur, parfums…)",
+                                               "montant":  "12,60 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "149,28 €",
-                             "categorie":  "abonnement et téléphonie",
+                             "categorie":  "Logement",
+                             "total":  "1 238,50 €",
                              "items":  [
                                            {
-                                               "nom":  "multimedia a domicile, tv internet",
-                                               "montant":  "87,97 €"
+                                               "nom":  "Loyers, Charges",
+                                               "montant":  "940,00 €"
                                            },
                                            {
-                                               "nom":  "telephonie",
-                                               "montant":  "61,31 €"
+                                               "nom":  "Energie (électricité, gaz, fuel, chauffage…)",
+                                               "montant":  "224,00 €"
+                                           },
+                                           {
+                                               "nom":  "Eau",
+                                               "montant":  "74,50 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "496,26",
-                             "categorie":  "voyage et transport",
-                             "items":  [
-                                           {
-                                               "nom":  "hebergement (hotel, camping,",
-                                               "montant":  "438,26 €"
-                                           },
-                                           {
-                                               "nom":  "transport quotidien",
-                                               "montant":  "58,00 €"
-                                           },
-                                           {
-                                               "nom":  "agence de voyage",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "1 157,92 EUR",
-                             "categorie":  "auto moto",
+                             "categorie":  "Auto \u0026 Moto",
+                             "total":  "874,95 €",
                              "items":  [
                                            {
                                                "nom":  "Financement",
                                                "montant":  "360,82 €"
                                            },
                                            {
-                                               "nom":  "assurance auto moto",
+                                               "nom":  "Assurances (Auto/Moto)",
                                                "montant":  "248,76 €"
                                            },
                                            {
-                                               "nom":  "carburant",
+                                               "nom":  "Carburant",
                                                "montant":  "197,67 €"
                                            },
                                            {
-                                               "nom":  "entretien réparation",
+                                               "nom":  "Entretien - Réparation",
                                                "montant":  "67,70 €"
-                                           },
-                                           {
-                                               "nom":  "location véhicule",
-                                               "montant":  "282,97 €"
-                                           },
-                                           {
-                                               "nom":  "auto moto autres",
-                                               "montant":  "0,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "57,80 €",
-                             "categorie":  "cadeaux et solidarité",
+                             "categorie":  "Voyages \u0026 Transports",
+                             "total":  "779,23 €",
                              "items":  [
                                            {
-                                               "nom":  "dont et cadeaux",
+                                               "nom":  "Hébergement (hôtels, camping…)",
+                                               "montant":  "438,26 €"
+                                           },
+                                           {
+                                               "nom":  "Location de véhicules",
+                                               "montant":  "282,97 €"
+                                           },
+                                           {
+                                               "nom":  "Transports quotidiens (métro, bus…)",
+                                               "montant":  "58,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Santé",
+                             "total":  "442,65 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Complémentaires santé",
+                                               "montant":  "219,27 €"
+                                           },
+                                           {
+                                               "nom":  "Médecins et frais médicaux",
+                                               "montant":  "175,38 €"
+                                           },
+                                           {
+                                               "nom":  "Optique, audition…",
+                                               "montant":  "48,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Abonnements \u0026 téléphonie",
+                             "total":  "149,28 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Multimedia à domicile (TV, internet, téléphonie…)",
+                                               "montant":  "87,97 €"
+                                           },
+                                           {
+                                               "nom":  "Téléphonie (fixe et mobile)",
+                                               "montant":  "61,31 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Éducation \u0026 Famille",
+                             "total":  "273,40 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Argent de poche",
+                                               "montant":  "230,00 €"
+                                           },
+                                           {
+                                               "nom":  "Etudes (formation, fournitures, cantines…)",
+                                               "montant":  "43,40 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Cadeaux et solidarité",
+                             "total":  "57,80 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Dons et Cadeaux",
                                                "montant":  "57,80 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "240,00 €",
-                             "categorie":  "Opération banquaire",
-                             "items":  [
-                                           {
-                                               "nom":  "epargne bancaire livret a enfants",
-                                               "montant":  "240,00 €"
-                                           },
-                                           {
-                                               "nom":  "crédit conso",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "virement emis",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "273,40 €",
-                             "categorie":  "education et famille",
-                             "items":  [
-                                           {
-                                               "nom":  "argent de poche",
-                                               "montant":  "230,00 €"
-                                           },
-                                           {
-                                               "nom":  "autres",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "etudes (formation, fourniture cantine transport",
-                                               "montant":  "43,40 €"
-                                           },
-                                           {
-                                               "nom":  "pension alimentaire",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "22,90 €",
-                             "categorie":  "autre",
-                             "items":  [
-                                           {
-                                               "nom":  "frais banquaire",
-                                               "montant":  "22,90 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "0,00 €",
-                             "categorie":  "impots et taxe",
-                             "items":  [
-                                           {
-                                               "nom":  "taxe d\u0027habitation",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "1 238,50 €",
-                             "categorie":  "logement",
-                             "items":  [
-                                           {
-                                               "nom":  "Assurance habitation et rc",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "eau",
-                                               "montant":  "74,50 €"
-                                           },
-                                           {
-                                               "nom":  "Energie edf",
-                                               "montant":  "224,00 €"
-                                           },
-                                           {
-                                               "nom":  "frais exeptionnel (déménagement etc)",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "loyer, charges",
-                                               "montant":  "940,00 €"
-                                           },
-                                           {
-                                               "nom":  "travaux réparation entretien",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
+                             "categorie":  "Loisirs et sorties",
                              "total":  "122,80 €",
-                             "categorie":  "loisir",
                              "items":  [
                                            {
-                                               "nom":  "club association",
+                                               "nom":  "Restaurants, bars, discothèques…",
+                                               "montant":  "85,40 €"
+                                           },
+                                           {
+                                               "nom":  "Club / association (sport, hobby, art…)",
                                                "montant":  "22,50 €"
                                            },
                                            {
-                                               "nom":  "divertissement cultur ciné",
+                                               "nom":  "Divertissement - culture (ciné, théâtre, concerts…)",
                                                "montant":  "14,90 €"
-                                           },
-                                           {
-                                               "nom":  "restaurant sortie",
-                                               "montant":  "85,40 €"
                                            }
                                        ]
                          },
                          {
+                             "categorie":  "Dépenses d\u0027épargne",
+                             "total":  "240,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Epargne bancaire (Livret A, PEL…)",
+                                               "montant":  "240,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Services financiers \u0026 professionnels",
+                             "total":  "22,90 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Services professionnels (avocats, notaires, comptabilité…)",
+                                               "montant":  "13,00 €"
+                                           },
+                                           {
+                                               "nom":  "Frais bancaires et de gestion (dont agios)",
+                                               "montant":  "9,90 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Impôts et taxes",
+                             "total":  "0,00 €",
+                             "items":  [
+
+                                       ]
+                         },
+                         {
+                             "categorie":  "Mouvements internes débiteurs",
                              "total":  "462,00 €",
-                             "categorie":  "mouvement interne débiteur",
                              "items":  [
                                            {
-                                               "nom":  "virement de compte a compte",
+                                               "nom":  "Virements émis de comptes à comptes",
                                                "montant":  "462,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "442,65 €",
-                             "categorie":  "santé",
-                             "items":  [
-                                           {
-                                               "nom":  "complémentaire santé",
-                                               "montant":  "219,27 €"
-                                           },
-                                           {
-                                               "nom":  "optique, audition",
-                                               "montant":  "48,00 €"
-                                           },
-                                           {
-                                               "nom":  "medecin et frais médicaux",
-                                               "montant":  "175,38 €"
-                                           },
-                                           {
-                                               "nom":  "pharmacie et labo",
-                                               "montant":  "0,00 €"
                                            }
                                        ]
                          }
@@ -2192,265 +1836,230 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "aout",
-        "revenuTotalFoyer":  "5 452,66 EUR",
-        "sommeRestante":  "-146,83 EUR",
-        "depenseTotalCommune":  "5 599,49 EUR",
+        "revenuTotalFoyer":  "5 452,66 €",
+        "sommeRestante":  "-146,83 €",
+        "depenseTotalCommune":  "5 599,49 €",
         "depenses":  [
                          {
-                             "total":  "1 473,88 €",
-                             "categorie":  "vie quotidienne",
+                             "categorie":  "Vie quotidienne",
+                             "total":  "1 473,88 €",
                              "items":  [
                                            {
                                                "nom":  "Alimentation",
-                                               "montant":  "1 129,38 €"
+                                               "montant":  "1 129,38 €"
                                            },
                                            {
-                                               "nom":  "animaux domestique",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "bien etre et soin*",
-                                               "montant":  "22,00 €"
-                                           },
-                                           {
-                                               "nom":  "bricolage et jardinage",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "electronique et informatique",
-                                               "montant":  "55,54 €"
-                                           },
-                                           {
-                                               "nom":  "equipement sportif",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "livre, cd jouet",
+                                               "nom":  "Livres, CD/DVD, bijoux, jouets…",
                                                "montant":  "170,54 €"
                                            },
                                            {
-                                               "nom":  "mobilier electro déco",
+                                               "nom":  "Mobilier, électroménager, décoration…",
                                                "montant":  "69,43 €"
                                            },
                                            {
-                                               "nom":  "vétement accessoire",
+                                               "nom":  "Electronique et informatique",
+                                               "montant":  "55,54 €"
+                                           },
+                                           {
+                                               "nom":  "Vêtements et accessoires",
                                                "montant":  "24,99 €"
                                            },
                                            {
-                                               "nom":  "vie quotidienne autre",
+                                               "nom":  "Bien-être et soins (coiffeur, parfums…)",
+                                               "montant":  "22,00 €"
+                                           },
+                                           {
+                                               "nom":  "Vie Quotidienne - Autres",
                                                "montant":  "2,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "117,93 €",
-                             "categorie":  "abonnement et téléphonie",
+                             "categorie":  "Logement",
+                             "total":  "1 238,50 €",
                              "items":  [
                                            {
-                                               "nom":  "multimedia a domicile, tv internet",
-                                               "montant":  "87,97 €"
+                                               "nom":  "Loyers, Charges",
+                                               "montant":  "940,00 €"
                                            },
                                            {
-                                               "nom":  "telephonie",
-                                               "montant":  "29,96 €"
+                                               "nom":  "Energie (électricité, gaz, fuel, chauffage…)",
+                                               "montant":  "224,00 €"
+                                           },
+                                           {
+                                               "nom":  "Eau",
+                                               "montant":  "74,50 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "137,93",
-                             "categorie":  "voyage et transport",
-                             "items":  [
-                                           {
-                                               "nom":  "hebergement (hotel, camping,",
-                                               "montant":  "60,05 €"
-                                           },
-                                           {
-                                               "nom":  "transport quotidien",
-                                               "montant":  "77,88 €"
-                                           },
-                                           {
-                                               "nom":  "agence de voyage",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "779,43 EUR",
-                             "categorie":  "auto moto",
+                             "categorie":  "Auto \u0026 Moto",
+                             "total":  "779,43 €",
                              "items":  [
                                            {
                                                "nom":  "Financement",
                                                "montant":  "360,82 €"
                                            },
                                            {
-                                               "nom":  "assurance auto moto",
+                                               "nom":  "Assurances (Auto/Moto)",
                                                "montant":  "248,76 €"
                                            },
                                            {
-                                               "nom":  "carburant",
+                                               "nom":  "Carburant",
                                                "montant":  "140,95 €"
                                            },
                                            {
-                                               "nom":  "entretien réparation",
+                                               "nom":  "Péages",
+                                               "montant":  "17,40 €"
+                                           },
+                                           {
+                                               "nom":  "Entretien - Réparation",
                                                "montant":  "8,00 €"
                                            },
                                            {
-                                               "nom":  "péage",
-                                               "montant":  "20,90 €"
-                                           },
-                                           {
-                                               "nom":  "auto moto autres",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Parking",
+                                               "montant":  "3,50 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "0,00 €",
-                             "categorie":  "cadeaux et solidarité",
+                             "categorie":  "Voyages \u0026 Transports",
+                             "total":  "137,93 €",
                              "items":  [
                                            {
-                                               "nom":  "dont et cadeaux",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Transports quotidiens (métro, bus…)",
+                                               "montant":  "77,88 €"
+                                           },
+                                           {
+                                               "nom":  "Hébergement (hôtels, camping…)",
+                                               "montant":  "60,05 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "701,00 €",
-                             "categorie":  "Opération banquaire",
+                             "categorie":  "Santé",
+                             "total":  "419,57 €",
                              "items":  [
                                            {
-                                               "nom":  "epargne bancaire livret a enfants",
-                                               "montant":  "240,00 €"
+                                               "nom":  "Complémentaires santé",
+                                               "montant":  "219,27 €"
                                            },
                                            {
-                                               "nom":  "chéque",
-                                               "montant":  "354,00 €"
+                                               "nom":  "Médecins et frais médicaux",
+                                               "montant":  "125,00 €"
                                            },
                                            {
-                                               "nom":  "retrait",
-                                               "montant":  "107,00 €"
+                                               "nom":  "Optique, audition…",
+                                               "montant":  "48,00 €"
+                                           },
+                                           {
+                                               "nom":  "Pharmacie et laboratoire",
+                                               "montant":  "27,30 €"
                                            }
                                        ]
                          },
                          {
+                             "categorie":  "Abonnements \u0026 téléphonie",
+                             "total":  "117,93 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Multimedia à domicile (TV, internet, téléphonie…)",
+                                               "montant":  "87,97 €"
+                                           },
+                                           {
+                                               "nom":  "Téléphonie (fixe et mobile)",
+                                               "montant":  "29,96 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Éducation \u0026 Famille",
                              "total":  "273,40 €",
-                             "categorie":  "education et famille",
                              "items":  [
                                            {
-                                               "nom":  "argent de poche",
+                                               "nom":  "Argent de poche",
                                                "montant":  "230,00 €"
                                            },
                                            {
-                                               "nom":  "autres",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "etudes (formation, fourniture cantine transport",
+                                               "nom":  "Etudes (formation, fournitures, cantines…)",
                                                "montant":  "43,40 €"
-                                           },
-                                           {
-                                               "nom":  "pension alimentaire",
-                                               "montant":  "0,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "9,90 €",
-                             "categorie":  "autre",
-                             "items":  [
-                                           {
-                                               "nom":  "frais banquaire",
-                                               "montant":  "9,90 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "0,00 €",
-                             "categorie":  "impots et taxe",
-                             "items":  [
-                                           {
-                                               "nom":  "taxe d\u0027habitation",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "1 238,50 €",
-                             "categorie":  "logement",
-                             "items":  [
-                                           {
-                                               "nom":  "Assurance habitation et rc",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "eau",
-                                               "montant":  "74,50 €"
-                                           },
-                                           {
-                                               "nom":  "Energie edf",
-                                               "montant":  "224,00 €"
-                                           },
-                                           {
-                                               "nom":  "frais exeptionnel (déménagement etc)",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "loyer, charges",
-                                               "montant":  "940,00 €"
-                                           },
-                                           {
-                                               "nom":  "travaux réparation entretien",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
+                             "categorie":  "Loisirs et sorties",
                              "total":  "190,75 €",
-                             "categorie":  "loisir",
                              "items":  [
                                            {
-                                               "nom":  "club association",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "divertissement cultur ciné",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "restaurant sortie",
+                                               "nom":  "Restaurants, bars, discothèques…",
                                                "montant":  "190,75 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "257,20 €",
-                             "categorie":  "mouvement interne débiteur",
+                             "categorie":  "Dépenses d\u0027épargne",
+                             "total":  "240,00 €",
                              "items":  [
                                            {
-                                               "nom":  "virement de compte a compte",
-                                               "montant":  "257,20 €"
+                                               "nom":  "Epargne bancaire (Livret A, PEL…)",
+                                               "montant":  "240,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "419,57 €",
-                             "categorie":  "santé",
+                             "categorie":  "Virements émis",
+                             "total":  "57,00 €",
                              "items":  [
                                            {
-                                               "nom":  "complémentaire santé",
-                                               "montant":  "219,27 €"
-                                           },
+                                               "nom":  "Virements émis",
+                                               "montant":  "57,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Chèques",
+                             "total":  "354,00 €",
+                             "items":  [
                                            {
-                                               "nom":  "optique, audition",
-                                               "montant":  "48,00 €"
-                                           },
+                                               "nom":  "Chèques",
+                                               "montant":  "354,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Retraits cash",
+                             "total":  "50,00 €",
+                             "items":  [
                                            {
-                                               "nom":  "medecin et frais médicaux",
-                                               "montant":  "125,00 €"
-                                           },
+                                               "nom":  "Retraits cash",
+                                               "montant":  "50,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Services financiers \u0026 professionnels",
+                             "total":  "9,90 €",
+                             "items":  [
                                            {
-                                               "nom":  "pharmacie et labo",
-                                               "montant":  "27,30 €"
+                                               "nom":  "Frais bancaires et de gestion (dont agios)",
+                                               "montant":  "9,90 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Impôts et taxes",
+                             "total":  "0,00 €",
+                             "items":  [
+
+                                       ]
+                         },
+                         {
+                             "categorie":  "Mouvements internes débiteurs",
+                             "total":  "257,20 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Virements émis de comptes à comptes",
+                                               "montant":  "257,20 €"
                                            }
                                        ]
                          }
@@ -2506,265 +2115,208 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "septembre",
-        "revenuTotalFoyer":  "10 460,51 EUR",
-        "sommeRestante":  "961,41 EUR",
-        "depenseTotalCommune":  "9 499,10 EUR",
+        "revenuTotalFoyer":  "10 460,51 €",
+        "sommeRestante":  "961,41 €",
+        "depenseTotalCommune":  "9 499,10 €",
         "depenses":  [
                          {
-                             "total":  "4 967,70 €",
-                             "categorie":  "vie quotidienne",
+                             "categorie":  "Vie quotidienne",
+                             "total":  "4 967,70 €",
                              "items":  [
+                                           {
+                                               "nom":  "Vie Quotidienne - Autres",
+                                               "montant":  "3 359,47 €"
+                                           },
                                            {
                                                "nom":  "Alimentation",
                                                "montant":  "845,00 €"
                                            },
                                            {
-                                               "nom":  "animaux domestique",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "bien etre et soin*",
-                                               "montant":  "19,40 €"
-                                           },
-                                           {
-                                               "nom":  "bricolage et jardinage",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "electronique et informatique",
+                                               "nom":  "Electronique et informatique",
                                                "montant":  "657,09 €"
                                            },
                                            {
-                                               "nom":  "equipement sportif",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "livre, cd jouet",
+                                               "nom":  "Livres, CD/DVD, bijoux, jouets…",
                                                "montant":  "86,74 €"
                                            },
                                            {
-                                               "nom":  "mobilier electro déco",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "vétement accessoire",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "vie quotidienne autre",
-                                               "montant":  "3 359,47 €"
+                                               "nom":  "Bien-être et soins (coiffeur, parfums…)",
+                                               "montant":  "19,40 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "247,65 €",
-                             "categorie":  "abonnement et téléphonie",
+                             "categorie":  "Logement",
+                             "total":  "1 191,50 €",
                              "items":  [
                                            {
-                                               "nom":  "multimedia a domicile, tv internet",
-                                               "montant":  "167,96 €"
+                                               "nom":  "Loyers, Charges",
+                                               "montant":  "940,00 €"
                                            },
                                            {
-                                               "nom":  "telephonie",
-                                               "montant":  "79,69 €"
+                                               "nom":  "Energie (électricité, gaz, fuel, chauffage…)",
+                                               "montant":  "177,00 €"
+                                           },
+                                           {
+                                               "nom":  "Eau",
+                                               "montant":  "74,50 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "237,13",
-                             "categorie":  "voyage et transport",
-                             "items":  [
-                                           {
-                                               "nom":  "hebergement (hotel, camping,",
-                                               "montant":  "101,75 €"
-                                           },
-                                           {
-                                               "nom":  "transport quotidien",
-                                               "montant":  "135,38 €"
-                                           },
-                                           {
-                                               "nom":  "agence de voyage",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "956,25 EUR",
-                             "categorie":  "auto moto",
+                             "categorie":  "Auto \u0026 Moto",
+                             "total":  "956,25 €",
                              "items":  [
                                            {
                                                "nom":  "Financement",
                                                "montant":  "360,82 €"
                                            },
                                            {
-                                               "nom":  "assurance auto moto",
+                                               "nom":  "Assurances (Auto/Moto)",
                                                "montant":  "248,76 €"
                                            },
                                            {
-                                               "nom":  "carburant",
+                                               "nom":  "Carburant",
                                                "montant":  "204,37 €"
                                            },
                                            {
-                                               "nom":  "entretien réparation",
-                                               "montant":  "30,00 €"
-                                           },
-                                           {
-                                               "nom":  "péage",
+                                               "nom":  "Péages",
                                                "montant":  "112,30 €"
                                            },
                                            {
-                                               "nom":  "auto moto autres",
-                                               "montant":  "0,00 €"
+                                               "nom":  "Entretien - Réparation",
+                                               "montant":  "30,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "159,90 €",
-                             "categorie":  "cadeaux et solidarité",
+                             "categorie":  "Voyages \u0026 Transports",
+                             "total":  "237,13 €",
                              "items":  [
                                            {
-                                               "nom":  "dont et cadeaux",
+                                               "nom":  "Transports quotidiens (métro, bus…)",
+                                               "montant":  "135,38 €"
+                                           },
+                                           {
+                                               "nom":  "Hébergement (hôtels, camping…)",
+                                               "montant":  "101,75 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Santé",
+                             "total":  "304,07 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Complémentaires santé",
+                                               "montant":  "219,27 €"
+                                           },
+                                           {
+                                               "nom":  "Médecins et frais médicaux",
+                                               "montant":  "60,00 €"
+                                           },
+                                           {
+                                               "nom":  "Pharmacie et laboratoire",
+                                               "montant":  "12,80 €"
+                                           },
+                                           {
+                                               "nom":  "Optique, audition…",
+                                               "montant":  "12,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Abonnements \u0026 téléphonie",
+                             "total":  "247,65 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Multimedia à domicile (TV, internet, téléphonie…)",
+                                               "montant":  "167,96 €"
+                                           },
+                                           {
+                                               "nom":  "Téléphonie (fixe et mobile)",
+                                               "montant":  "79,69 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Éducation \u0026 Famille",
+                             "total":  "240,00 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Argent de poche",
+                                               "montant":  "230,00 €"
+                                           },
+                                           {
+                                               "nom":  "Etudes (formation, fournitures, cantines…)",
+                                               "montant":  "10,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Cadeaux et solidarité",
+                             "total":  "159,90 €",
+                             "items":  [
+                                           {
+                                               "nom":  "Dons et Cadeaux",
                                                "montant":  "159,90 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "390,00 €",
-                             "categorie":  "Opération banquaire",
-                             "items":  [
-                                           {
-                                               "nom":  "epargne bancaire livret a enfants",
-                                               "montant":  "240,00 €"
-                                           },
-                                           {
-                                               "nom":  "crédit conso",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "virement emis",
-                                               "montant":  "150,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "240,00 €",
-                             "categorie":  "education et famille",
-                             "items":  [
-                                           {
-                                               "nom":  "argent de poche",
-                                               "montant":  "230,00 €"
-                                           },
-                                           {
-                                               "nom":  "autres",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "etudes (formation, fourniture cantine transport",
-                                               "montant":  "10,00 €"
-                                           },
-                                           {
-                                               "nom":  "pension alimentaire",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "9,90 €",
-                             "categorie":  "autre",
-                             "items":  [
-                                           {
-                                               "nom":  "frais banquaire",
-                                               "montant":  "9,90 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "0,00 €",
-                             "categorie":  "impots et taxe",
-                             "items":  [
-                                           {
-                                               "nom":  "taxe d\u0027habitation",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
-                             "total":  "1 191,50 €",
-                             "categorie":  "logement",
-                             "items":  [
-                                           {
-                                               "nom":  "Assurance habitation et rc",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "eau",
-                                               "montant":  "74,50 €"
-                                           },
-                                           {
-                                               "nom":  "Energie edf",
-                                               "montant":  "177,00 €"
-                                           },
-                                           {
-                                               "nom":  "frais exeptionnel (déménagement etc)",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "loyer, charges",
-                                               "montant":  "940,00 €"
-                                           },
-                                           {
-                                               "nom":  "travaux réparation entretien",
-                                               "montant":  "0,00 €"
-                                           }
-                                       ]
-                         },
-                         {
+                             "categorie":  "Loisirs et sorties",
                              "total":  "82,00 €",
-                             "categorie":  "loisir",
                              "items":  [
                                            {
-                                               "nom":  "club association",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "divertissement cultur ciné",
-                                               "montant":  "0,00 €"
-                                           },
-                                           {
-                                               "nom":  "restaurant sortie",
+                                               "nom":  "Restaurants, bars, discothèques…",
                                                "montant":  "82,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "713,00 €",
-                             "categorie":  "mouvement interne débiteur",
+                             "categorie":  "Dépenses d\u0027épargne",
+                             "total":  "240,00 €",
                              "items":  [
                                            {
-                                               "nom":  "virement de compte a compte",
-                                               "montant":  "713,00 €"
+                                               "nom":  "Epargne bancaire (Livret A, PEL…)",
+                                               "montant":  "240,00 €"
                                            }
                                        ]
                          },
                          {
-                             "total":  "304,07 €",
-                             "categorie":  "santé",
+                             "categorie":  "Virements émis",
+                             "total":  "150,00 €",
                              "items":  [
                                            {
-                                               "nom":  "complémentaire santé",
-                                               "montant":  "219,27 €"
-                                           },
+                                               "nom":  "Virements émis",
+                                               "montant":  "150,00 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Services financiers \u0026 professionnels",
+                             "total":  "9,90 €",
+                             "items":  [
                                            {
-                                               "nom":  "optique, audition",
-                                               "montant":  "12,00 €"
-                                           },
+                                               "nom":  "Frais bancaires et de gestion (dont agios)",
+                                               "montant":  "9,90 €"
+                                           }
+                                       ]
+                         },
+                         {
+                             "categorie":  "Impôts et taxes",
+                             "total":  "0,00 €",
+                             "items":  [
+
+                                       ]
+                         },
+                         {
+                             "categorie":  "Mouvements internes débiteurs",
+                             "total":  "713,00 €",
+                             "items":  [
                                            {
-                                               "nom":  "medecin et frais médicaux",
-                                               "montant":  "60,00 €"
-                                           },
-                                           {
-                                               "nom":  "pharmacie et labo",
-                                               "montant":  "12,80 €"
+                                               "nom":  "Virements émis de comptes à comptes",
+                                               "montant":  "713,00 €"
                                            }
                                        ]
                          }
@@ -2820,11 +2372,17 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "octobre",
-        "revenuTotalFoyer":  "0,00 EUR",
-        "sommeRestante":  "0,00 EUR",
-        "depenseTotalCommune":  "0,00 EUR",
+        "revenuTotalFoyer":  "0,00 €",
+        "sommeRestante":  "0,00 €",
+        "depenseTotalCommune":  "0,00 €",
         "depenses":  [
+                         {
+                             "categorie":  "Impôts et taxes",
+                             "total":  "0,00 €",
+                             "items":  [
 
+                                       ]
+                         }
                      ],
         "revenus":  [
 
@@ -2833,11 +2391,17 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "novembre",
-        "revenuTotalFoyer":  "0,00 EUR",
-        "sommeRestante":  "0,00 EUR",
-        "depenseTotalCommune":  "0,00 EUR",
+        "revenuTotalFoyer":  "0,00 €",
+        "sommeRestante":  "0,00 €",
+        "depenseTotalCommune":  "0,00 €",
         "depenses":  [
+                         {
+                             "categorie":  "Impôts et taxes",
+                             "total":  "0,00 €",
+                             "items":  [
 
+                                       ]
+                         }
                      ],
         "revenus":  [
 
@@ -2846,11 +2410,17 @@ window.BUDGET2026 = [
     },
     {
         "mois":  "decembre",
-        "revenuTotalFoyer":  "0,00 EUR",
-        "sommeRestante":  "0,00 EUR",
-        "depenseTotalCommune":  "0,00 EUR",
+        "revenuTotalFoyer":  "0,00 €",
+        "sommeRestante":  "0,00 €",
+        "depenseTotalCommune":  "0,00 €",
         "depenses":  [
+                         {
+                             "categorie":  "Impôts et taxes",
+                             "total":  "0,00 €",
+                             "items":  [
 
+                                       ]
+                         }
                      ],
         "revenus":  [
 
