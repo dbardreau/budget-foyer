@@ -13,6 +13,25 @@ let BASE = Array.isArray(window.BUDGET2026) ? window.BUDGET2026 : [];
 /* Données de base par année : baseData = { "2026": [12 mois], "2027": [...] , … } */
 let baseData = {};
 
+/* Relevés du Livret Bourso+ : epargneData = { "2026": [12 mois], … }.
+   Les relevés importés vivent dans data-epargne.js. */
+let epargneData = {};
+(function initEpargne(){
+  if(Array.isArray(window.BUDGET_EPARGNE_2026)) epargneData['2026'] = window.BUDGET_EPARGNE_2026;
+  if(window.BUDGET_EPARGNE && typeof window.BUDGET_EPARGNE === 'object'){
+    for(const y in window.BUDGET_EPARGNE){
+      if(Array.isArray(window.BUDGET_EPARGNE[y])) epargneData[y] = window.BUDGET_EPARGNE[y];
+    }
+  }
+})();
+
+/* Comptes gérés par l'application */
+const ACCOUNTS = [
+  {key:'commun', label:'Compte commun', short:'Commun', color:'#4f9cf9'},
+  {key:'livret', label:'Livret Bourso+', short:'Livret', color:'#22c55e'},
+];
+function accountLabel(key){ const a=ACCOUNTS.find(x=>x.key===key); return a?a.label:'Compte commun'; }
+
 /* Construit les 12 mois d'une année. Sans données importées, on crée des
    mois vides pour pouvoir quand même saisir des opérations (ex. 2027). */
 function emptyMonth(mk){ return { mois:mk, revenuTotalFoyer:'0', sommeRestante:'0', depenseTotalCommune:'0', depenses:[], revenus:[] }; }
@@ -83,7 +102,7 @@ function cmoney(n){ return fmt(n) + ' €'; }
 function cls(n){ return n<0 ? 'neg' : 'pos'; }
 
 /* ---------- État ---------- */
-const state = { tab:'overview', month:new Date().getMonth(), year:2026 };
+const state = { tab:'overview', month:new Date().getMonth(), year:2026, account:'commun' };
 let editingKey = null; // {mk, id} quand on modifie une opération existante
 
 /* ============================================================
@@ -249,7 +268,8 @@ function updateSyncBadge(){
   el.classList.toggle('online', online);
 }
 
-function monthByKey(k){ return BASE.find(m => m.mois===k) || null; }
+function monthByKeyFor(year, k){ return yearMonths(year).find(m=>m.mois===k) || emptyMonth(k); }
+function monthByKey(k){ return monthByKeyFor(state.year, k); }
 function addAmounts(a,b){ return Math.round((a+b)*100)/100; }
 
 /* Revenus de base cumulés d'un mois (somme des lignes) */
@@ -263,10 +283,45 @@ function baseSomme(month){
   return parseAmount(month.sommeRestante);
 }
 
-/* Totaux avec ajouts utilisateur pour un mois */
-function monthWithOps(mk){
-  const month = monthByKey(mk);
-  const ops = opsOf(mk);
+/* ---------- Comptes ---------- */
+/* Opérations saisies pour une année / un mois (toutes origines) */
+function opsOfYear(year, mk){ return (userOps[String(year)]||{})[mk] || []; }
+/* Opérations du compte commun uniquement (les anciennes n'ont pas de champ compte) */
+function commonOps(list){ return list.filter(o=>(o.compte||'commun')==='commun'); }
+function isInterne(o){ return !!(o && (o.interne===true || /^mouvement interne/.test(norm(o.cat)))); }
+
+function emptyEpargneMonth(mk){ return {mois:mk, soldeDebut:null, soldeFin:null, operations:[]}; }
+function epargneMonths(year){
+  const arr = epargneData[String(year)];
+  return (Array.isArray(arr) && arr.length===12) ? arr : MONTHS.map(emptyEpargneMonth);
+}
+function epargneMonthOf(year, mk){
+  return epargneMonths(year).find(m=>m.mois===mk) || emptyEpargneMonth(mk);
+}
+/* Mouvements du Livret : relevés importés + saisies manuelles */
+function epargneOps(year, mk){
+  const m = epargneMonthOf(year, mk);
+  const base = ((m && m.operations) || []).map(o=>({ ...o, compte:'livret', source:'releve' }));
+  const manual = opsOfYear(year, mk).filter(o=>(o.compte||'commun')==='livret');
+  return base.concat(manual);
+}
+/* Vue mensuelle du Livret Bourso+ */
+function livretMonth(year, mk){
+  const m = epargneMonthOf(year, mk);
+  const ops = epargneOps(year, mk);
+  const revOps = ops.filter(o=>o.type==='revenu');
+  const depOps = ops.filter(o=>o.type==='depense');
+  const revTotal = addAmounts(revOps.reduce((s,o)=>s+(o.montant||o.amount||0),0),0);
+  const depTotal = addAmounts(depOps.reduce((s,o)=>s+(o.montant||o.amount||0),0),0);
+  const net = addAmounts(revTotal, -depTotal);
+  const soldeCompte = (m.soldeDebut==null) ? null : addAmounts(m.soldeDebut, net);
+  return {month:m, ops, revOps, depOps, revTotal, depTotal, somme:net, soldeCompte, soldeDebut:m.soldeDebut};
+}
+
+/* Totaux du compte commun avec ajouts utilisateur pour un mois */
+function monthWithOpsFor(year, mk){
+  const month = monthByKeyFor(year, mk);
+  const ops = commonOps(opsOfYear(year, mk));
   const depOps = ops.filter(o=>o.type==='depense');
   const revOps = ops.filter(o=>o.type==='revenu');
   const depAdd = depOps.reduce((s,o)=>s+o.amount,0);
@@ -280,10 +335,11 @@ function monthWithOps(mk){
     depAdd, revAdd,
   };
 }
+function monthWithOps(mk){ return monthWithOpsFor(state.year, mk); }
 
-/* Cartographie catégorie -> total (base + ajouts) pour un mois */
-function catTotalsMk(mk){
-  const {month, depOps} = monthWithOps(mk);
+/* Cartographie catégorie -> total (compte commun : base + ajouts) pour un mois */
+function catTotalsMkFor(year, mk){
+  const {month, depOps} = monthWithOpsFor(year, mk);
   const map = {};
   (month.depenses||[]).forEach(c=>{ map[norm(c.categorie)] = {total:parseAmount(c.total), label:c.categorie, items:c.items||[]}; });
   depOps.forEach(o=>{
@@ -295,6 +351,40 @@ function catTotalsMk(mk){
   });
   return map;
 }
+function catTotalsMk(mk){ return catTotalsMkFor(state.year, mk); }
+
+/* Dépenses du Livret par catégorie (relevés + saisies) */
+function livretExpenseMap(year, mk, externalOnly){
+  const map = {};
+  epargneOps(year, mk).forEach(o=>{
+    if(o.type!=='depense') return;
+    if(externalOnly && isInterne(o)) return;
+    const k = norm(o.cat);
+    const amt = o.montant || o.amount || 0;
+    if(!map[k]) map[k] = {total:0,label:o.cat,items:[]};
+    map[k].total = addAmounts(map[k].total, amt);
+    map[k].items.push({
+      nom: [o.date, o.label].filter(Boolean).join(' · '),
+      montant: fmt(amt) + ' €',
+    });
+  });
+  return map;
+}
+/* Fusion de deux cartographies catégorie -> total */
+function mergeCatMaps(a, b){
+  const map = {};
+  [a, b].forEach(src=>{
+    Object.keys(src||{}).forEach(k=>{
+      const it = src[k];
+      if(!map[k]) map[k] = {total:0,label:it.label,items:[],userOps:[]};
+      map[k].total = addAmounts(map[k].total, it.total);
+      map[k].items = (map[k].items||[]).concat(it.items||[]);
+      map[k].userOps = (map[k].userOps||[]).concat(it.userOps||[]);
+    });
+  });
+  return map;
+}
+
 
 /* ---------- Rendu global ---------- */
 function switchTab(tab){
@@ -309,21 +399,54 @@ function switchTab(tab){
 }
 
 /* ============ ACCUEIL ============ */
+function epargneExternalTotals(year){
+  let rev = 0, dep = 0;
+  MONTHS.forEach(mk=>{
+    epargneOps(year, mk).forEach(o=>{
+      if(isInterne(o)) return;
+      const amt = o.montant || o.amount || 0;
+      if(o.type==='revenu') rev = addAmounts(rev, amt);
+      else if(o.type==='depense') dep = addAmounts(dep, amt);
+    });
+  });
+  return {rev, dep};
+}
+function livretLastBalance(year){
+  let val = null, mk = null;
+  MONTHS.forEach(m=>{ const lm = livretMonth(year, m); if(lm.soldeCompte!=null){ val = lm.soldeCompte; mk = m; } });
+  return {value:val, month:mk};
+}
+/* Dernier solde connu du Livret jusqu'au mois demandé inclus */
+function livretBalanceUpTo(year, mk){
+  let out = null;
+  MONTHS.slice(0, MONTHS.indexOf(mk)+1).forEach(m=>{
+    const lm = livretMonth(year, m);
+    if(lm.soldeCompte!=null) out = {value:lm.soldeCompte, month:m};
+  });
+  return out;
+}
 function yearlyTotals(){
   const tot = {rev:0,dep:0};
   BASE.forEach(m=>{ tot.rev+=baseRevTotal(m); tot.dep+=baseDepTotal(m); });
-  // ajouts
+  // ajouts du compte commun
   MONTHS.forEach(mk => { const w = monthWithOps(mk); tot.rev=addAmounts(tot.rev,w.revAdd); tot.dep=addAmounts(tot.dep,w.depAdd); });
+  // mouvements réels du Livret (hors virements entre comptes)
+  const ep = epargneExternalTotals(state.year);
+  tot.rev = addAmounts(tot.rev, ep.rev);
+  tot.dep = addAmounts(tot.dep, ep.dep);
   return tot;
 }
 function renderOverview(){
   const tot = yearlyTotals();
   const balance = Math.round((tot.rev-tot.dep)*100)/100;
   const joined = MONTHS.reduce((s,mk)=>s+opsOf(mk).length,0);
+  const lastLivret = livretLastBalance(state.year);
   const kpis = [
-    {cls:'blue', label:'Revenus '+state.year, val:cmoney(tot.rev), sub:'Total entrées'},
-    {cls:'red',  label:'Dépenses '+state.year, val:cmoney(tot.dep), sub:'Total sorties'},
+    {cls:'blue', label:'Revenus '+state.year, val:cmoney(tot.rev), sub:'Total entrées (commun + Livret)'},
+    {cls:'red',  label:'Dépenses '+state.year, val:cmoney(tot.dep), sub:'Total sorties (commun + Livret)'},
     {cls: balance<0?'red':'green', label:'Solde '+state.year, val:cmoney(balance), sub:'Revenus − dépenses'},
+    {cls:'green', label:'Solde Livret', val: lastLivret.value==null?'—':cmoney(lastLivret.value),
+      sub: lastLivret.month ? 'Livret Bourso+ · fin '+MONTHS_FR[MONTHS.indexOf(lastLivret.month)] : 'Livret Bourso+ · aucun relevé'},
     {cls:'violet', label:'Ajouts manuels', val:String(joined), sub:'opérations saisies'},
   ];
   document.getElementById('kpis').innerHTML = kpis.map(k=>`
@@ -331,21 +454,15 @@ function renderOverview(){
     <div class="val ${k.cls==='red'?'neg':k.cls==='green'?'pos':''}">${k.val}</div>
     <div class="sub">${k.sub}</div></div>`).join('');
 
-  const revs = MONTHS.map(mk=>baseRevTotal(monthByKey(mk)) + opsOf(mk).filter(o=>o.type==='revenu').reduce((s,o)=>s+o.amount,0));
-  const deps = MONTHS.map(mk=>baseDepTotal(monthByKey(mk)) + opsOf(mk).filter(o=>o.type==='depense').reduce((s,o)=>s+o.amount,0));
+  const months = MONTHS.map(mk=>monthTotalsFor(state.year, mk));
   drawBarChart('chartRevDep', { labels:MONTHS_FR.map(m=>m.slice(0,3)), series:[
-      {name:'Revenus', color:'#22c55e', values:revs},
-      {name:'Dépenses', color:'#ef4444', values:deps},
+      {name:'Revenus', color:'#22c55e', values:months.map(x=>x.rev)},
+      {name:'Dépenses', color:'#ef4444', values:months.map(x=>x.dep)},
   ]});
 
-  // donut dépenses annuelles par catégorie
-  const catTot = {};
-  BASE.forEach(m => { (m.depenses||[]).forEach(c=>{ const k=norm(c.categorie); catTot[k]=addAmounts(catTot[k]||0, parseAmount(c.total)); }); });
-  MONTHS.forEach(mk=>{
-    const ops=opsOf(mk).filter(o=>o.type==='depense');
-    ops.forEach(o=>{ const k=norm(o.cat); catTot[k]=(catTot[k]||0)+o.amount; });
-  });
-  const entries = Object.entries(catTot).map(([k,v])=>({k,v})).filter(e=>e.v>0).sort((a,b)=>b.v-a.v);
+  // donut dépenses annuelles par catégorie (commun + Livret, hors virements internes)
+  const catTot = catTotalsFor(state.year, MONTHS.slice());
+  const entries = Object.entries(catTot).map(([k,v])=>({k,v:v.total})).filter(e=>e.v>0).sort((a,b)=>b.v-a.v);
   drawDonut('chartDonut', entries.map(en=>({label:catMeta(en.k).label, color:catMeta(en.k).color, rawKey:en.k, v:en.v})));
   renderTopCat(entries);
 }
@@ -369,22 +486,75 @@ function renderTopCat(entries){
 function renderMonth(){
   const mk = MONTHS[state.month];
   document.getElementById('currentMonthTitle').textContent = MONTHS_FR[state.month] + ' ' + state.year;
-  const w = monthWithOps(mk);
-  const kpis = [
-    {cls:'blue', label:'Revenus', val:cmoney(w.revTotal), sub:w.revAdd?'dont +'+cmoney(w.revAdd)+' (ajouts)':'représentation mensuelle'},
-    {cls:'red', label:'Dépenses', val:cmoney(w.depTotal), sub:w.depAdd?'dont +'+cmoney(w.depAdd)+' (ajouts)':''},
-    {cls: w.somme<0?'red':'green', label:'Somme restante', val:cmoney(w.somme), sub:'solde du mois'},
-  ];
+
+  const acc = state.account || 'commun';
+  const common = monthWithOps(mk);
+  const livret = livretMonth(state.year, mk);
+  const ext = epargneOps(state.year, mk).filter(o=>!isInterne(o));
+  const extRev = ext.filter(o=>o.type==='revenu').reduce((s,o)=>s+(o.montant||o.amount||0),0);
+  const extDep = ext.filter(o=>o.type==='depense').reduce((s,o)=>s+(o.montant||o.amount||0),0);
+  const soldeUpTo = livretBalanceUpTo(state.year, mk);
+  const soldeTxt = soldeUpTo ? cmoney(soldeUpTo.value) : '—';
+  const soldeSub = soldeUpTo
+    ? (soldeUpTo.month===mk ? 'fin de mois' : 'dernier relevé · fin '+MONTHS_FR[MONTHS.indexOf(soldeUpTo.month)])
+    : 'aucun relevé';
+
+  let kpis, note;
+  if(acc==='livret'){
+    kpis = [
+      {cls:'green', label:'Entrées', val:cmoney(livret.revTotal), sub:'tous les crédits du Livret'},
+      {cls:'red',   label:'Sorties', val:cmoney(livret.depTotal), sub:'tous les débits du Livret'},
+      {cls: livret.somme<0?'red':'green', label:'Variation du mois', val:cmoney(livret.somme), sub:'entrées − sorties'},
+      {cls:'violet', label:'Solde du Livret', val:soldeTxt, sub:soldeSub},
+    ];
+    if(livret.month.soldeDebut!=null){
+      note = "Vue du Livret Bourso+ : les virements entre comptes figurent dans les entrées/sorties du compte, mais sont exclus du budget du foyer.";
+    } else if(epargneMonths(state.year).some(m=>m.soldeDebut!=null)){
+      note = "Aucun relevé du Livret pour ce mois : les mouvements saisis à la main restent visibles, et le solde affiché est celui du dernier relevé importé.";
+    } else {
+      note = "Aucun relevé du Livret Bourso+ n'est importé pour cette année.";
+    }
+  } else if(acc==='tous'){
+    const rev = addAmounts(common.revTotal, extRev);
+    const dep = addAmounts(common.depTotal, extDep);
+    kpis = [
+      {cls:'blue',  label:'Revenus', val:cmoney(rev), sub:'commun + Livret, hors virements internes'},
+      {cls:'red',   label:'Dépenses', val:cmoney(dep), sub:'commun + Livret, hors virements internes'},
+      {cls: (rev-dep)<0?'red':'green', label:'Solde du mois', val:cmoney(addAmounts(rev,-dep)), sub:'revenus − dépenses'},
+      {cls:'violet', label:'Solde du Livret', val:soldeTxt, sub:soldeSub},
+    ];
+    note = "Vue consolidée : compte commun + Livret Bourso+. Les virements entre vos comptes sont exclus pour éviter les doubles comptages.";
+  } else {
+    kpis = [
+      {cls:'blue', label:'Revenus', val:cmoney(common.revTotal), sub:common.revAdd?'dont +'+cmoney(common.revAdd)+' (ajouts)':'représentation mensuelle'},
+      {cls:'red',  label:'Dépenses', val:cmoney(common.depTotal), sub:common.depAdd?'dont +'+cmoney(common.depAdd)+' (ajouts)':''},
+      {cls: common.somme<0?'red':'green', label:'Somme restante', val:cmoney(common.somme), sub:'solde du mois'},
+      {cls:'violet', label:'Solde du Livret', val:soldeTxt, sub:'Livret Bourso+ · '+soldeSub},
+    ];
+    note = "Vue du compte commun uniquement. Choisissez « Livret Bourso+ » ou « Tous les comptes » pour changer de périmètre.";
+  }
+
   document.getElementById('monthKpis').innerHTML = kpis.map(k=>`
     <div class="kpi ${k.cls}"><div class="label">${k.label}</div>
     <div class="val ${k.cls==='red'?'neg':k.cls==='green'?'pos':''}">${k.val}</div>
     <div class="sub">${k.sub}</div></div>`).join('');
+  const noteEl = document.getElementById('monthAccountNote');
+  if(noteEl) noteEl.textContent = note;
 
-  // Revenus (accordeon + couleurs, comme les dépenses)
-  renderRevenues(mk);
+  // Revenus (accordéon + couleurs, comme les dépenses)
+  if(acc==='livret'){
+    renderRevenueGroups(livretRevenueGroups(state.year, mk, false));
+  } else if(acc==='tous'){
+    renderRevenueGroups(mergeRevenueGroups(
+      commonRevenueGroups(state.year, mk),
+      livretRevenueGroups(state.year, mk, true)
+    ));
+  } else {
+    renderRevenues(mk);
+  }
 
   // Dépenses par catégorie
-  renderExpenses(mk);
+  renderExpenseMap(expenseMapFor(acc, mk));
   renderUserOps(mk);
 }
 
@@ -408,9 +578,9 @@ function revColor(key){
   return colors[h % colors.length];
 }
 
-/* Revenus du mois groupés par source, en accordéon coloré (façon dépenses) */
-function renderRevenues(mk){
-  const w = monthWithOps(mk);
+/* Revenus du compte commun groupés par source */
+function commonRevenueGroups(year, mk){
+  const w = monthWithOpsFor(year, mk);
   const map = {};
   (w.month.revenus||[]).forEach(r=>{
     const k = norm(r.nom);
@@ -426,10 +596,43 @@ function renderRevenues(mk){
     if(!map[k].user) map[k].user=[];
     map[k].user.push({label:o.label, amount:o.amount});
   });
-  const sorted = Object.values(map).sort((a,b)=>b.total-a.total);
-  document.getElementById('revenueList').innerHTML = sorted.map(c=>{
+  return Object.values(map).sort((a,b)=>b.total-a.total);
+}
+
+/* Revenus du Livret (relevés + saisies) groupés par catégorie */
+function livretRevenueGroups(year, mk, externalOnly){
+  const map = {};
+  epargneOps(year, mk).forEach(o=>{
+    if(o.type!=='revenu') return;
+    if(externalOnly && isInterne(o)) return;
+    const k = norm(o.cat);
+    const amt = o.montant || o.amount || 0;
+    if(!map[k]) map[k] = {label:o.cat, items:[], total:0};
+    map[k].total = addAmounts(map[k].total, amt);
+    map[k].items.push({detail:[o.date,o.label].filter(Boolean).join(' · '), amount:amt});
+  });
+  return Object.values(map).sort((a,b)=>b.total-a.total);
+}
+
+/* Fusion de groupes de revenus (même libellé) */
+function mergeRevenueGroups(a, b){
+  const map = {};
+  [...a, ...b].forEach(g=>{
+    const k = norm(g.label);
+    if(!map[k]) map[k] = {label:g.label, items:[], user:[], total:0};
+    map[k].total = addAmounts(map[k].total, g.total);
+    map[k].items = (map[k].items||[]).concat(g.items||[]);
+    map[k].user = (map[k].user||[]).concat(g.user||[]);
+  });
+  return Object.values(map).sort((x,y)=>y.total-x.total);
+}
+
+function renderRevenueGroups(groups){
+  const box = document.getElementById('revenueList');
+  if(!groups.length){ box.innerHTML = '<div class="muted" style="font-size:13px">Aucun revenu ce mois-ci.</div>'; return; }
+  box.innerHTML = groups.map(c=>{
     const col = revColor(c.label);
-    const items = c.items.map(r=>`
+    const items = (c.items||[]).map(r=>`
       <div class="row"><span class="muted">${e(r.detail)||'—'}</span><span class="money" style="color:${col}">${fmt(r.amount)} €</span></div>`).join('');
     const user = (c.user||[]).map(u=>`
       <div class="row" style="color:var(--accent)"><span>${e(u.label)||'Ajout manuel'}</span><span class="money">+${fmt(u.amount)} €</span></div>`).join('');
@@ -443,10 +646,21 @@ function renderRevenues(mk){
   }).join('');
 }
 
-function renderExpenses(mk){
-  const map = catTotalsMk(mk);
+/* Cartographie des dépenses selon le compte affiché */
+function expenseMapFor(acc, mk){
+  if(acc==='livret') return livretExpenseMap(state.year, mk, false);
+  if(acc==='tous') return mergeCatMaps(catTotalsMk(mk), livretExpenseMap(state.year, mk, true));
+  return catTotalsMk(mk);
+}
+
+/* Revenus du mois du compte commun */
+function renderRevenues(mk){ renderRevenueGroups(commonRevenueGroups(state.year, mk)); }
+
+function renderExpenseMap(map){
+  const box = document.getElementById('expenseList');
   const sorted = Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
-  document.getElementById('expenseList').innerHTML = sorted.map(([k,c])=>{
+  if(!sorted.length){ box.innerHTML = '<div class="muted" style="font-size:13px">Aucune dépense ce mois-ci.</div>'; return; }
+  box.innerHTML = sorted.map(([k,c])=>{
     const m = catMeta(c.label);
     const items = (c.items||[]).map(it=>`
       <div class="row"><span class="muted">${e((it.nom||'').trim())||'—'}</span><span class="money seg-amount">${(it.montant||'').replace(/€/g,'').trim()||'0,00'}</span></div>`).join('');
@@ -461,16 +675,20 @@ function renderExpenses(mk){
     </div>`;
   }).join('');
 }
+function renderExpenses(mk){ renderExpenseMap(catTotalsMk(mk)); }
 
 function renderUserOps(mk){
-  const arr = oy(state.year)[mk] || (oy(state.year)[mk] = []);
-  const ops = arr;
+  const arr = opsOf(mk);
+  const acc = state.account || 'commun';
+  const list = arr.map((o,i)=>({o,i})).filter(({o}) => acc==='tous' || (o.compte||'commun')===acc);
   const box = document.getElementById('userOps');
-  if(!ops.length){ box.innerHTML = '<div class="muted" style="font-size:13px">Aucune opération ajoutée.</div>'; return; }
-  box.innerHTML = `<div class="list">` + ops.map((o,i)=>{
+  if(!list.length){ box.innerHTML = '<div class="muted" style="font-size:13px">Aucune opération ajoutée.</div>'; return; }
+  box.innerHTML = `<div class="list">` + list.map(({o,i})=>{
     const isRev = o.type==='revenu';
+    const ck = o.compte || 'commun';
+    const tag = acc==='tous' ? `<span class="account-tag ${ck==='livret'?'livret':''}">${ck==='livret'?'Livret':'Commun'}</span>` : '';
     return `<div class="row">
-      <div class="nam"><span class="bar-label">${e(o.cat)} <span class="tag ${isRev?'ok':'over'}" style="font-size:10px">${isRev?'+':'− '}</span></span><span class="lbl">${e((o.sub?o.label+' · '+o.sub:(o.label))||'')}</span></div>
+      <div class="nam"><span class="bar-label">${e(o.cat)} <span class="tag ${isRev?'ok':'over'}" style="font-size:10px">${isRev?'+':'− '}</span>${tag}</span><span class="lbl">${e((o.sub?o.label+' · '+o.sub:(o.label))||'')}</span></div>
       <div style="display:flex;gap:10px;align-items:center">
         <span class="money" style="color:${isRev?'var(--accent2)':'var(--danger)'}">${isRev?'+':''}${fmt(o.amount)} €</span>
         <button class="btn ghost small" data-edit="${i}">Modifier</button>
@@ -517,7 +735,7 @@ function prevYearWithData(year){
   return null;
 }
 
-/* Totaux dépenses par catégorie (base + ajouts) pour une liste de mois d'une année */
+/* Totaux dépenses par catégorie (commun + Livret, hors virements internes) */
 function catTotalsFor(year, monthNames){
   const monthsArr = yearMonths(year);
   const opsMap = userOps[String(year)] || {};
@@ -530,14 +748,21 @@ function catTotalsFor(year, monthNames){
     });
     (opsMap[mk]||[]).forEach(o=>{
       if(o.type!=='depense') return;
+      if((o.compte||'commun')!=='commun') return;
       const k = norm(o.cat); if(!map[k]) map[k]={total:0,label:o.cat};
       map[k].total = addAmounts(map[k].total, o.amount);
+    });
+    epargneOps(year, mk).forEach(o=>{
+      if(o.type!=='depense' || isInterne(o)) return;
+      const amt = o.montant || o.amount || 0;
+      const k = norm(o.cat); if(!map[k]) map[k]={total:0,label:o.cat};
+      map[k].total = addAmounts(map[k].total, amt);
     });
   });
   return map;
 }
 
-/* Total dépenses (base + ajouts) pour une liste de mois d'une année */
+/* Total dépenses (commun + Livret, hors virements internes) */
 function depTotalFor(year, monthNames){
   const monthsArr = yearMonths(year);
   const opsMap = userOps[String(year)] || {};
@@ -545,7 +770,14 @@ function depTotalFor(year, monthNames){
   monthNames.forEach(mk=>{
     const month = monthsArr.find(m=>m.mois===mk) || emptyMonth(mk);
     t = addAmounts(t, baseDepTotal(month));
-    (opsMap[mk]||[]).forEach(o=>{ if(o.type==='depense') t=addAmounts(t,o.amount); });
+    (opsMap[mk]||[]).forEach(o=>{
+      if(o.type!=='depense' || (o.compte||'commun')!=='commun') return;
+      t=addAmounts(t,o.amount);
+    });
+    epargneOps(year, mk).forEach(o=>{
+      if(o.type!=='depense' || isInterne(o)) return;
+      t = addAmounts(t, o.montant || o.amount || 0);
+    });
   });
   return t;
 }
@@ -589,9 +821,10 @@ function renderBudget(){
 
   const note = document.getElementById('budgetNote');
   const refTxt = refAct ? `moyenne des ${refAct} mois renseignés de ${refYear}` : `aucune donnée sur ${refYear}`;
+  const scopeTxt = `compte commun + Livret Bourso+, hors virements entre comptes`;
   if(note) note.textContent = usePrev
-    ? `Budget calculé automatiquement d'après votre consommation réelle (saisies + ajouts manuels). La colonne « Budget » = ${refTxt} ; « Réel » = moyenne des ${curAct.length} mois renseignés de ${year}.`
-    : `Budget calculé automatiquement d'après votre consommation réelle (saisies + ajouts manuels) : ${refTxt}. Il gagnera en pertinence dès qu'une année antérieure existera (créez 2027 avec ‹ › : elle servira de référence pour les années suivantes).`;
+    ? `Budget calculé automatiquement d'après votre consommation réelle (${scopeTxt}). La colonne « Budget » = ${refTxt} ; « Réel » = moyenne des ${curAct.length} mois renseignés de ${year}.`
+    : `Budget calculé automatiquement d'après votre consommation réelle (${scopeTxt}) : ${refTxt}. Il gagnera en pertinence dès qu'une année antérieure existera (créez 2027 avec ‹ › : elle servira de référence pour les années suivantes).`;
 
   const kpis = [
     {cls:'blue',  label:'Budget de référence / mois', val:cmoney(totalRef),  sub:'moyenne réelle '+refYear+' · '+refAct+' mois'},
@@ -651,7 +884,7 @@ function renderBudgetMonth(){
 
   const note = document.getElementById('budgetMonthNote');
   if(note) note.textContent = refAct
-    ? `Votre budget mensuel de référence (moyenne des ${refAct} mois renseignés de ${refYear}) comparé à ce que vous avez dépensé en ${MONTHS_FR[state.month]} ${year}.`
+    ? `Votre budget mensuel de référence (moyenne des ${refAct} mois renseignés de ${refYear}) comparé à ce que vous avez dépensé en ${MONTHS_FR[state.month]} ${year}, Livret Bourso+ inclus et virements entre comptes exclus.`
     : `Aucune donnée de référence sur ${refYear} : ajoutez des dépenses pour voir apparaître votre budget mensuel.`;
 
   const kpis = [
@@ -709,14 +942,20 @@ const CHART_GROUPS = [
   {label:'Virements internes',        color:'#2dd4bf', keys:['mouvement interne débiteur']},
 ];
 
-/* Totaux (base + ajouts) d'un mois, pour une année donnée */
+/* Totaux (commun + Livret hors virements internes) d'un mois, pour une année donnée */
 function monthTotalsFor(year, mk){
   const m = yearMonths(year).find(x=>x.mois===mk) || emptyMonth(mk);
-  const ops = (userOps[String(year)]||{})[mk] || [];
+  const ops = commonOps((userOps[String(year)]||{})[mk] || []);
   let rev = baseRevTotal(m), dep = baseDepTotal(m);
   ops.forEach(o=>{
     if(o.type==='revenu') rev = addAmounts(rev, o.amount);
     else if(o.type==='depense') dep = addAmounts(dep, o.amount);
+  });
+  epargneOps(year, mk).forEach(o=>{
+    if(isInterne(o)) return;
+    const amt = o.montant || o.amount || 0;
+    if(o.type==='revenu') rev = addAmounts(rev, amt);
+    else if(o.type==='depense') dep = addAmounts(dep, amt);
   });
   return {rev, dep, solde:addAmounts(rev, -dep)};
 }
@@ -736,7 +975,7 @@ function catMonthly(year){
   return per;
 }
 
-/* Sources de revenus d'un mois (base + ajouts) */
+/* Sources de revenus d'un mois (commun + Livret, hors virements internes) */
 function revenueSourcesFor(mk){
   const w = monthWithOps(mk);
   const map = {};
@@ -749,6 +988,13 @@ function revenueSourcesFor(mk){
     const k = norm(o.cat);
     if(!map[k]) map[k] = {label:o.cat, total:0};
     map[k].total = addAmounts(map[k].total, o.amount);
+  });
+  epargneOps(state.year, mk).forEach(o=>{
+    if(o.type!=='revenu' || isInterne(o)) return;
+    const amt = o.montant || o.amount || 0;
+    const k = norm(o.cat);
+    if(!map[k]) map[k] = {label:o.cat, total:0};
+    map[k].total = addAmounts(map[k].total, amt);
   });
   return Object.values(map).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
 }
@@ -797,7 +1043,7 @@ function renderSankey(mk){
   const box = document.getElementById('chartSankey');
   if(!box) return;
 
-  const map = catTotalsMk(mk);
+  const map = mergeCatMaps(catTotalsMk(mk), livretExpenseMap(state.year, mk, true));
   const groups = CHART_GROUPS.map(g=>({label:g.label, color:g.color, keys:g.keys.map(norm), total:0}));
   const catchAll = {label:'Autres', color:'#94a3b8', keys:[], total:0};
   Object.keys(map).forEach(k=>{
@@ -847,20 +1093,31 @@ function renderTrend(months, act){
   });
 }
 
-/* ---------- 3. Épargne cumulée ---------- */
+/* ---------- 3. Épargne cumulée + solde réel du Livret ---------- */
 function renderSavings(){
-  let acc = 0; const cum = [];
+  let acc = 0, started = false;
+  const cum = [], solde = [];
   MONTHS.forEach(mk=>{
-    const w = monthWithOps(mk);
-    if(w.revTotal===0 && w.depTotal===0){ cum.push(null); return; }
-    acc = addAmounts(acc, w.somme);
-    cum.push(acc);
+    const t = monthTotalsFor(state.year, mk);
+    if(!started && t.rev===0 && t.dep===0){
+      cum.push(null);
+    } else {
+      started = true;
+      acc = addAmounts(acc, t.solde);
+      cum.push(acc);
+    }
+    solde.push(livretMonth(state.year, mk).soldeCompte);
   });
-  drawLineChart('chartSavings', {
-    labels: MONTHS_SHORT,
-    signed:true, legend:false,
-    series:[{name:'Épargne cumulée', color:'#22c55e', values:cum, signed:true, width:2.6, lastLabel:true}],
-  });
+
+  const all = cum.concat(solde).filter(v=>v!=null);
+  const hasNeg = all.some(v=>v<0);
+  const series = [
+    {name:'Cumul du foyer', color:'#4f9cf9', values:cum, signed:true, width:2.6, lastLabel:true},
+  ];
+  if(solde.some(v=>v!=null)){
+    series.push({name:'Solde du Livret', color:'#22c55e', values:solde, width:2.4, lastLabel:true});
+  }
+  drawLineChart('chartSavings', { labels: MONTHS_SHORT, signed:hasNeg, series });
 }
 
 /* ---------- 4. Ce mois vs la moyenne des autres mois ---------- */
@@ -952,6 +1209,7 @@ function openModal(){
   const sel = document.getElementById('fMois');
   sel.innerHTML = MONTHS.map((mk,i)=>`<option value="${i}">${MONTHS_FR[i]} ${state.year}</option>`).join('');
   sel.value = state.month;
+  setFormAccount(state.account==='livret' ? 'livret' : 'commun');
   setFormType('depense');
   document.getElementById('modal').classList.remove('hidden');
 }
@@ -964,6 +1222,7 @@ function openEdit(mk, i){
   const sel = document.getElementById('fMois');
   sel.innerHTML = MONTHS.map((m,idx)=>`<option value="${idx}">${MONTHS_FR[idx]} ${state.year}</option>`).join('');
   sel.value = MONTHS.indexOf(mk);
+  setFormAccount(op.compte || 'commun');
   setFormType(op.type);
   const fcat = document.getElementById('fCat');
   if([...fcat.options].some(o=>o.value===op.cat)) fcat.value = op.cat; else fcat.value='';
@@ -974,8 +1233,12 @@ function openEdit(mk, i){
   document.getElementById('fAmount').value = op.amount;
   document.getElementById('modal').classList.remove('hidden');
 }
+function setFormAccount(acc){
+  const key = acc==='livret' ? 'livret' : 'commun';
+  document.querySelectorAll('#formAccountSeg .seg').forEach(b=>b.classList.toggle('active', b.dataset.account===key));
+}
 function setFormType(type){
-  document.querySelectorAll('.seg').forEach(b=>b.classList.toggle('active', b.dataset.type===type));
+  document.querySelectorAll('#addForm .seg[data-type]').forEach(b=>b.classList.toggle('active', b.dataset.type===type));
   const base = type==='depense' ? CATS.map(c=>`<option value="${c.key}">${c.label}</option>`)
                                 : REVENUE_SOURCES.map(s=>`<option value="${s}">${s}</option>`);
   const custom = (type==='depense'?customCats:customSrc).map(c=>`<option value="${c}">${c} (personnalisée)</option>`);
@@ -1422,7 +1685,15 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   document.getElementById('btnAdd').onclick=openModal;
   document.getElementById('modalClose').onclick=()=>document.getElementById('modal').classList.add('hidden');
   document.getElementById('formCancel').onclick=()=>document.getElementById('modal').classList.add('hidden');
-  document.querySelectorAll('.seg').forEach(b=>b.onclick=()=>setFormType(b.dataset.type));
+  document.querySelectorAll('#addForm .seg[data-type]').forEach(b=>b.onclick=()=>setFormType(b.dataset.type));
+  document.querySelectorAll('#formAccountSeg .seg').forEach(b=>b.onclick=()=>setFormAccount(b.dataset.account));
+
+  const monthAccSeg = document.getElementById('monthAccountSeg');
+  if(monthAccSeg) monthAccSeg.querySelectorAll('.seg').forEach(b=>b.onclick=()=>{
+    state.account = b.dataset.account;
+    monthAccSeg.querySelectorAll('.seg').forEach(x=>x.classList.toggle('active', x===b));
+    renderMonth();
+  });
 
   document.getElementById('fCat').addEventListener('change', ()=>updateSubSelect());
 
@@ -1451,7 +1722,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 
   document.getElementById('addForm').addEventListener('submit', ev=>{
     ev.preventDefault();
-    const type = document.querySelector('.seg.active').dataset.type;
+    const type = document.querySelector('#addForm .seg.active[data-type]').dataset.type;
+    const accountEl = document.querySelector('#formAccountSeg .seg.active');
+    const compte = accountEl ? accountEl.dataset.account : 'commun';
     const mi = +document.getElementById('fMois').value;
     const mk = MONTHS[mi];
     const cat = document.getElementById('fCat').value;
@@ -1459,7 +1732,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     const label = document.getElementById('fLabel').value.trim();
     const amount = parseFloat(document.getElementById('fAmount').value);
     if(!amount||amount<=0){ showToast('Montant invalide.','err'); return; }
-    const payload = {type, cat, sub, label:label||sub||(type==='depense'?'Dépense':'Revenu'), amount:Math.round(amount*100)/100};
+    const payload = {type, cat, sub, label:label||sub||(type==='depense'?'Dépense':'Revenu'), amount:Math.round(amount*100)/100, compte};
     if(editingKey){
       const {mk:emk, year:ey, i:ei} = editingKey;
       // si on a changé de année ou de mois, on déplace l'opération

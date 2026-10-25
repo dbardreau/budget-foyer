@@ -85,6 +85,15 @@
       <button id="nextMonth" class="nav-arrow">›</button>
     </div>
 
+    <div class="account-bar">
+      <div class="segmented" id="monthAccountSeg">
+        <button type="button" class="seg active" data-account="commun">Compte commun</button>
+        <button type="button" class="seg" data-account="livret">Livret Bourso+</button>
+        <button type="button" class="seg" data-account="tous">Tous les comptes</button>
+      </div>
+    </div>
+    <p class="muted note" id="monthAccountNote" style="text-align:center;margin:0 0 6px"></p>
+
     <div class="month-kpis" id="monthKpis"></div>
 
     <div class="card">
@@ -163,9 +172,9 @@
         <p class="muted note">La courbe lissée (moyenne mobile sur 3 mois) gomme les pics ponctuels pour révéler la vraie trajectoire.</p>
       </div>
       <div class="card">
-        <h3>Épargne cumulée</h3>
+        <h3>Épargne : cumul du foyer et Livret Bourso+</h3>
         <canvas id="chartSavings" height="300"></canvas>
-        <p class="muted note">Cumul des soldes mensuels (revenus − dépenses). La courbe qui monte = de l'argent mis de côté.</p>
+        <p class="muted note">La courbe bleue cumule les soldes mensuels du foyer (revenus − dépenses). La courbe verte suit le solde réel du Livret Bourso+, d'après les relevés importés.</p>
       </div>
     </div>
 
@@ -217,6 +226,13 @@
     </div>
     <form id="addForm">
       <div class="field">
+        <label>Compte</label>
+        <div class="segmented" id="formAccountSeg">
+          <button type="button" class="seg active" data-account="commun">Compte commun</button>
+          <button type="button" class="seg" data-account="livret">Livret Bourso+</button>
+        </div>
+      </div>
+      <div class="field">
         <label>Type</label>
         <div class="segmented">
           <button type="button" class="seg active" data-type="depense">Dépense</button>
@@ -257,6 +273,7 @@
 </div>
 
 <script src="data.js"></script>
+<script src="data-epargne.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
