@@ -96,6 +96,42 @@
 
     <div class="month-kpis" id="monthKpis"></div>
 
+    <div class="card hidden" id="forecastCard">
+      <h3 id="forecastTitle">Prévisionnel de fin de mois</h3>
+      <p class="muted" id="forecastNote"></p>
+      <div class="forecast-head">
+        <div>
+          <div class="label">Déjà encaissé</div>
+          <div class="money pos" id="fcRevReal">—</div>
+        </div>
+        <div>
+          <div class="label">Déjà dépensé</div>
+          <div class="money neg" id="fcDepReal">—</div>
+        </div>
+        <div class="forecast-total">
+          <div class="label">Prévision de fin de mois</div>
+          <div class="val" id="fcTotal">—</div>
+          <div class="sub" id="fcSub"></div>
+        </div>
+      </div>
+      <details class="fc-details">
+        <summary>
+          <span>Détail des postes attendus</span>
+          <span class="fc-sums"><span class="pos" id="fcRevSum"></span><span class="muted"> · </span><span class="neg" id="fcDepSum"></span></span>
+        </summary>
+        <div class="grid2">
+          <div>
+            <h4 class="fc-h">Revenus attendus</h4>
+            <div class="list" id="fcRevList"></div>
+          </div>
+          <div>
+            <h4 class="fc-h">Dépenses attendues</h4>
+            <div class="list" id="fcDepList"></div>
+          </div>
+        </div>
+      </details>
+    </div>
+
     <div class="card">
       <h3>Revenus</h3>
       <div id="revenueList" class="list"></div>
@@ -231,6 +267,7 @@
           <button type="button" class="seg active" data-account="commun">Compte commun</button>
           <button type="button" class="seg" data-account="livret">Livret Bourso+</button>
         </div>
+        <div class="muted" style="font-size:11px;margin-top:6px">Sur le Livret, le solde affiché se met à jour avec vos saisies, à partir du dernier relevé connu.</div>
       </div>
       <div class="field">
         <label>Type</label>

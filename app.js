@@ -305,17 +305,67 @@ function epargneOps(year, mk){
   const manual = opsOfYear(year, mk).filter(o=>(o.compte||'commun')==='livret');
   return base.concat(manual);
 }
+
+/* Soldes du Livret, mois par mois, en suivant les saisies manuelles :
+   · un mois couvert par un relevé : le solde de fin du relevé fait foi,
+     augmenté des opérations saisies à la main pour ce mois ;
+   · un mois sans relevé : on repart du dernier solde connu et on applique
+     les opérations saisies (le solde reste donc à jour, même après septembre).
+   `anchor` retient le mois du dernier relevé utilisé pour le calcul,
+   `carryIn` le solde repris de l'année précédente (0 si aucun). */
+function livretBalanceSeries(year, depth){
+  const d = depth || 0;
+  const out = [];
+  const carryIn = d < 5 ? livretCarryIn(year, d) : null;
+  let cur = carryIn;
+  let anchor = null;
+  MONTHS.forEach(mk=>{
+    const m = epargneMonthOf(year, mk);
+    const manual = opsOfYear(year, mk).filter(o=>(o.compte||'commun')==='livret');
+    const manualNet = manual.reduce((s,o)=> s + (o.type==='revenu' ? o.amount : -o.amount), 0);
+    const hasReleve = m.soldeFin!=null;
+    if(hasReleve) anchor = mk;
+    const debut = (m.soldeDebut!=null) ? m.soldeDebut : cur;
+    let fin = null;
+    if(hasReleve) fin = addAmounts(m.soldeFin, manualNet);
+    else if(cur!=null) fin = addAmounts(cur, manualNet);
+    out.push({
+      mk, soldeDebut:debut, soldeFin:fin, manual, manualNet, anchor, carryIn,
+      source: hasReleve ? 'releve' : (fin!=null ? 'estime' : null),
+    });
+    cur = fin;
+  });
+  return out;
+}
+/* Solde du Livret repris en fin d'année précédente (continuité entre les années) */
+function livretCarryIn(year, depth){
+  const prev = Number(year) - 1;
+  if(!epargneData[String(prev)] && !userOps[String(prev)]) return null;
+  const serie = livretBalanceSeries(prev, (depth||0)+1);
+  for(let i=serie.length-1; i>=0; i--){ if(serie[i].soldeFin!=null) return serie[i].soldeFin; }
+  return null;
+}
+function livretBalanceAt(year, mk){
+  return livretBalanceSeries(year).find(b=>b.mk===mk)
+      || {mk, soldeDebut:null, soldeFin:null, manual:[], manualNet:0, anchor:null, carryIn:null, source:null};
+}
+
 /* Vue mensuelle du Livret Bourso+ */
 function livretMonth(year, mk){
   const m = epargneMonthOf(year, mk);
   const ops = epargneOps(year, mk);
+  const bal = livretBalanceAt(year, mk);
   const revOps = ops.filter(o=>o.type==='revenu');
   const depOps = ops.filter(o=>o.type==='depense');
   const revTotal = addAmounts(revOps.reduce((s,o)=>s+(o.montant||o.amount||0),0),0);
   const depTotal = addAmounts(depOps.reduce((s,o)=>s+(o.montant||o.amount||0),0),0);
   const net = addAmounts(revTotal, -depTotal);
-  const soldeCompte = (m.soldeDebut==null) ? null : addAmounts(m.soldeDebut, net);
-  return {month:m, ops, revOps, depOps, revTotal, depTotal, somme:net, soldeCompte, soldeDebut:m.soldeDebut};
+  return {
+    month:m, ops, revOps, depOps, revTotal, depTotal, somme:net,
+    soldeCompte:bal.soldeFin, soldeDebut:bal.soldeDebut,
+    soldeSource:bal.source, soldeAnchor:bal.anchor, soldeCarryIn:bal.carryIn,
+    manual:bal.manual, manualNet:bal.manualNet,
+  };
 }
 
 /* Totaux du compte commun avec ajouts utilisateur pour un mois */
@@ -412,16 +462,26 @@ function epargneExternalTotals(year){
   return {rev, dep};
 }
 function livretLastBalance(year){
-  let val = null, mk = null;
-  MONTHS.forEach(m=>{ const lm = livretMonth(year, m); if(lm.soldeCompte!=null){ val = lm.soldeCompte; mk = m; } });
-  return {value:val, month:mk};
+  const serie = livretBalanceSeries(year);
+  let out = {value:null, month:null, estimated:false};
+  serie.forEach(b=>{
+    if(b.soldeFin==null) return;
+    if(b.source==='releve' || b.manual.length) out = {value:b.soldeFin, month:b.mk, estimated:b.source!=='releve'};
+  });
+  // Aucun relevé ni saisie cette année : on affiche au moins le report de l'année précédente
+  if(out.value==null && serie.length && serie[0].carryIn!=null){
+    out = {value:serie[0].carryIn, month:null, estimated:true};
+  }
+  return out;
 }
 /* Dernier solde connu du Livret jusqu'au mois demandé inclus */
 function livretBalanceUpTo(year, mk){
   let out = null;
-  MONTHS.slice(0, MONTHS.indexOf(mk)+1).forEach(m=>{
-    const lm = livretMonth(year, m);
-    if(lm.soldeCompte!=null) out = {value:lm.soldeCompte, month:m};
+  livretBalanceSeries(year).slice(0, MONTHS.indexOf(mk)+1).forEach(b=>{
+    if(b.soldeFin!=null) out = {
+      value:b.soldeFin, month:b.mk, estimated:b.source!=='releve',
+      anchor:b.anchor, carryIn:b.carryIn, hasManual:b.manual.length>0,
+    };
   });
   return out;
 }
@@ -446,7 +506,9 @@ function renderOverview(){
     {cls:'red',  label:'Dépenses '+state.year, val:cmoney(tot.dep), sub:'Total sorties (commun + Livret)'},
     {cls: balance<0?'red':'green', label:'Solde '+state.year, val:cmoney(balance), sub:'Revenus − dépenses'},
     {cls:'green', label:'Solde Livret', val: lastLivret.value==null?'—':cmoney(lastLivret.value),
-      sub: lastLivret.month ? 'Livret Bourso+ · fin '+MONTHS_FR[MONTHS.indexOf(lastLivret.month)] : 'Livret Bourso+ · aucun relevé'},
+      sub: lastLivret.month
+        ? 'Livret Bourso+ · fin '+MONTHS_FR[MONTHS.indexOf(lastLivret.month)]+(lastLivret.estimated?' (estimé)':'')
+        : (lastLivret.value!=null ? 'Livret Bourso+ · report fin '+(state.year-1) : 'Livret Bourso+ · aucun relevé')},
     {cls:'violet', label:'Ajouts manuels', val:String(joined), sub:'opérations saisies'},
   ];
   document.getElementById('kpis').innerHTML = kpis.map(k=>`
@@ -495,9 +557,19 @@ function renderMonth(){
   const extDep = ext.filter(o=>o.type==='depense').reduce((s,o)=>s+(o.montant||o.amount||0),0);
   const soldeUpTo = livretBalanceUpTo(state.year, mk);
   const soldeTxt = soldeUpTo ? cmoney(soldeUpTo.value) : '—';
-  const soldeSub = soldeUpTo
-    ? (soldeUpTo.month===mk ? 'fin de mois' : 'dernier relevé · fin '+MONTHS_FR[MONTHS.indexOf(soldeUpTo.month)])
-    : 'aucun relevé';
+  let soldeSub = 'aucun relevé';
+  if(soldeUpTo){
+    if(soldeUpTo.month!==mk){
+      soldeSub = 'dernier relevé · fin '+MONTHS_FR[MONTHS.indexOf(soldeUpTo.month)];
+    } else if(soldeUpTo.estimated){
+      soldeSub = 'estimé · '
+        + (soldeUpTo.anchor ? 'relevé de '+MONTHS_FR[MONTHS.indexOf(soldeUpTo.anchor)]
+                             : 'solde de fin '+(state.year-1))
+        + (soldeUpTo.hasManual ? ' + vos saisies' : '');
+    } else {
+      soldeSub = soldeUpTo.hasManual ? 'fin de mois · relevé + vos saisies' : 'fin de mois';
+    }
+  }
 
   let kpis, note;
   if(acc==='livret'){
@@ -507,10 +579,14 @@ function renderMonth(){
       {cls: livret.somme<0?'red':'green', label:'Variation du mois', val:cmoney(livret.somme), sub:'entrées − sorties'},
       {cls:'violet', label:'Solde du Livret', val:soldeTxt, sub:soldeSub},
     ];
-    if(livret.month.soldeDebut!=null){
+    if(livret.soldeSource==='releve'){
       note = "Vue du Livret Bourso+ : les virements entre comptes figurent dans les entrées/sorties du compte, mais sont exclus du budget du foyer.";
-    } else if(epargneMonths(state.year).some(m=>m.soldeDebut!=null)){
-      note = "Aucun relevé du Livret pour ce mois : les mouvements saisis à la main restent visibles, et le solde affiché est celui du dernier relevé importé.";
+    } else if(livret.soldeSource==='estime'){
+      const fromTxt = livret.soldeAnchor
+        ? 'du dernier relevé connu (fin ' + MONTHS_FR[MONTHS.indexOf(livret.soldeAnchor)] + ')'
+        : 'du solde de fin ' + (state.year-1);
+      note = "Pas encore de relevé pour ce mois : le solde est calculé à partir " + fromTxt
+           + " et de vos opérations saisies. Il se met à jour automatiquement à chaque ajout sur le Livret.";
     } else {
       note = "Aucun relevé du Livret Bourso+ n'est importé pour cette année.";
     }
@@ -556,6 +632,7 @@ function renderMonth(){
   // Dépenses par catégorie
   renderExpenseMap(expenseMapFor(acc, mk));
   renderUserOps(mk);
+  renderForecast(mk, acc);
 }
 
 /* Couleur stable par source de revenu (déterministe pour les sources personnalisées) */
@@ -647,11 +724,149 @@ function renderRevenueGroups(groups){
 }
 
 /* Cartographie des dépenses selon le compte affiché */
-function expenseMapFor(acc, mk){
-  if(acc==='livret') return livretExpenseMap(state.year, mk, false);
-  if(acc==='tous') return mergeCatMaps(catTotalsMk(mk), livretExpenseMap(state.year, mk, true));
-  return catTotalsMk(mk);
+function expenseTotalsForAcc(year, mk, acc){
+  if(acc==='livret') return livretExpenseMap(year, mk, false);
+  if(acc==='tous') return mergeCatMaps(catTotalsMkFor(year, mk), livretExpenseMap(year, mk, true));
+  return catTotalsMkFor(year, mk);
 }
+function expenseMapFor(acc, mk){ return expenseTotalsForAcc(state.year, mk, acc); }
+
+/* Revenus d'un mois pour un compte donné, normalisés en { clé: { label, total } } */
+function revenueTotalsForAcc(year, mk, acc){
+  const groups = acc==='livret'
+    ? livretRevenueGroups(year, mk, false)
+    : acc==='tous'
+      ? mergeRevenueGroups(commonRevenueGroups(year, mk), livretRevenueGroups(year, mk, true))
+      : commonRevenueGroups(year, mk);
+  const map = {};
+  groups.forEach(g=>{
+    const k = norm(g.label);
+    if(!map[k]) map[k] = {label:g.label, total:0};
+    map[k].total = addAmounts(map[k].total, g.total);
+  });
+  return map;
+}
+
+/* ============ PRÉVISIONNEL DE FIN DE MOIS ============
+   On projette la fin du mois affiché à partir des postes récurrents :
+   chaque catégorie (dépense) ou source (revenu) présente dans au moins
+   la moitié des mois précédents est attendue à sa moyenne mensuelle.
+   Ce qui est déjà encaissé/dépensé est déduit, le reste est ajouté.
+   Seul le « solde reporté » est écarté (c'est un report, pas une ressource). */
+const ROLLOVER_RX = /solde (du )?mois precedent/;
+
+/* Mois en cours ou à venir (le prévisionnel n'a de sens que là) */
+function isOpenMonth(year, mi){
+  const now = new Date();
+  return year > now.getFullYear() || (year === now.getFullYear() && mi >= now.getMonth());
+}
+
+function monthForecastFor(year, mk, acc){
+  const hasData = (y, m) => { const t = monthTotalsFor(y, m); return t.rev>0 || t.dep>0; };
+  const mi = MONTHS.indexOf(mk);
+  // historique : mois précédents de l'année, sinon l'année précédente entière
+  let hist = MONTHS.slice(0, mi).map(m=>({y:year, m})).filter(x=>hasData(x.y, x.m));
+  let histLabel = `tes ${hist.length} mois précédents`;
+  if(hist.length < 3){
+    const prev = year - 1;
+    hist = MONTHS.map(m=>({y:prev, m})).filter(x=>hasData(x.y, x.m));
+    histLabel = `tes ${hist.length} mois de ${prev}`;
+  }
+  if(!hist.length){
+    hist = MONTHS.filter(m=>m!==mk).map(m=>({y:year, m})).filter(x=>hasData(x.y, x.m));
+    histLabel = `les ${hist.length} autres mois de ${year}`;
+  }
+  if(!hist.length) return null;
+
+  const n = hist.length;
+  const dep = {}, rev = {};
+  hist.forEach(x=>{
+    const dm = expenseTotalsForAcc(x.y, x.m, acc);
+    Object.keys(dm).forEach(k=>{
+      if(!dep[k]) dep[k] = {label:dm[k].label, total:0, months:0};
+      dep[k].total = addAmounts(dep[k].total, dm[k].total);
+      dep[k].months++;
+    });
+    const rm = revenueTotalsForAcc(x.y, x.m, acc);
+    Object.keys(rm).forEach(k=>{
+      if(!rev[k]) rev[k] = {label:rm[k].label, total:0, months:0};
+      rev[k].total = addAmounts(rev[k].total, rm[k].total);
+      rev[k].months++;
+    });
+  });
+
+  const minMonths = Math.max(2, Math.ceil(n*0.5));
+  const build = (src, actual) => Object.keys(src)
+    .filter(k => src[k].months >= minMonths && !ROLLOVER_RX.test(k) && src[k].total/n >= 1)
+    .map(k=>{
+      const expected = Math.round(src[k].total/n*100)/100;
+      const done = actual[k] ? actual[k].total : 0;
+      return {key:k, label:src[k].label, expected, done,
+              remaining: Math.max(0, Math.round((expected-done)*100)/100)};
+    })
+    .filter(p=>p.remaining >= 0.5)
+    .sort((a,b)=>b.remaining-a.remaining);
+
+  const depActual = expenseTotalsForAcc(year, mk, acc);
+  const revActual = revenueTotalsForAcc(year, mk, acc);
+  const revReal = Object.values(revActual).reduce((s,x)=>s+x.total,0);
+  const depReal = Object.values(depActual).reduce((s,x)=>s+x.total,0);
+  const revRemaining = build(rev, revActual);
+  const depRemaining = build(dep, depActual);
+  const sumRev = revRemaining.reduce((s,p)=>s+p.remaining,0);
+  const sumDep = depRemaining.reduce((s,p)=>s+p.remaining,0);
+
+  return {
+    months:n, histLabel,
+    revReal, depReal, sumRev, sumDep,
+    revRemaining, depRemaining,
+    forecast: addAmounts(addAmounts(revReal, -depReal), addAmounts(sumRev, -sumDep)),
+  };
+}
+
+/* Bloc « prévisionnel » de la page Mois */
+function renderForecast(mk, acc){
+  const card = document.getElementById('forecastCard');
+  if(!card) return;
+  const mi = MONTHS.indexOf(mk);
+  if(acc==='livret' || !isOpenMonth(state.year, mi)){ card.classList.add('hidden'); return; }
+  const f = monthForecastFor(state.year, mk, acc);
+  if(!f){ card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+
+  const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+  const money = (n, neg) => (Math.abs(n) < 0.005 ? '0,00 €' : (neg ? '−' : '+') + fmt(Math.abs(n)) + ' €');
+
+  document.getElementById('forecastTitle').textContent =
+    'Prévisionnel de fin de mois — ' + MONTHS_FR[mi] + ' ' + state.year;
+  document.getElementById('forecastNote').textContent =
+    `Estimation d'après ${f.histLabel} : chaque poste récurrent est attendu à sa moyenne mensuelle, `
+    + `et ce qui est déjà encaissé ou dépensé est déduit. Le solde reporté n'est pas compté.`
+    + (f.forecast < 0
+        ? ` Résultat négatif : le mois coûte plus que tes revenus récurrents, il faudra compléter depuis ton épargne (ou réduire un poste).`
+        : '');
+
+  set('fcRevReal', money(f.revReal, false));
+  set('fcDepReal', money(f.depReal, true));
+  set('fcRevSum', f.sumRev>0 ? '+'+fmt(f.sumRev)+' €' : '—');
+  set('fcDepSum', f.sumDep>0 ? '−'+fmt(f.sumDep)+' €' : '—');
+  const total = document.getElementById('fcTotal');
+  if(total){
+    total.textContent = money(f.forecast, f.forecast<0);
+    total.className = 'val ' + (f.forecast<0 ? 'neg' : 'pos');
+  }
+  set('fcSub', 'net du mois attendu · hors solde reporté');
+
+  const rowsHtml = (list, cls, signed) => {
+    if(!list.length) return '<div class="muted" style="font-size:13px">Rien d\'attendu : tout est déjà saisi.</div>';
+    return list.map(p=>`<div class="row">
+      <span>${e(p.label)}${p.done>0 ? ` <span class="muted" style="font-size:11px">(déjà ${fmt(p.done)} € sur ${fmt(p.expected)} €)</span>` : ''}</span>
+      <span class="money ${cls}">${signed?'+':''}${fmt(p.remaining)} €</span></div>`).join('');
+  };
+  document.getElementById('fcRevList').innerHTML = rowsHtml(f.revRemaining, 'pos', true);
+  document.getElementById('fcDepList').innerHTML = rowsHtml(f.depRemaining, 'neg', false);
+}
+
 
 /* Revenus du mois du compte commun */
 function renderRevenues(mk){ renderRevenueGroups(commonRevenueGroups(state.year, mk)); }
@@ -1096,8 +1311,13 @@ function renderTrend(months, act){
 /* ---------- 3. Épargne cumulée + solde réel du Livret ---------- */
 function renderSavings(){
   let acc = 0, started = false;
-  const cum = [], solde = [];
-  MONTHS.forEach(mk=>{
+  const cum = [];
+  const balSerie = livretBalanceSeries(state.year);
+  let lastKnown = -1;
+  balSerie.forEach((b,i)=>{ if(b.source==='releve' || (b.manual && b.manual.length)) lastKnown = i; });
+  const solde = balSerie.map((b,i)=> (b.soldeFin!=null && i<=lastKnown) ? b.soldeFin : null);
+
+  MONTHS.forEach((mk,i)=>{
     const t = monthTotalsFor(state.year, mk);
     if(!started && t.rev===0 && t.dep===0){
       cum.push(null);
@@ -1106,7 +1326,6 @@ function renderSavings(){
       acc = addAmounts(acc, t.solde);
       cum.push(acc);
     }
-    solde.push(livretMonth(state.year, mk).soldeCompte);
   });
 
   const all = cum.concat(solde).filter(v=>v!=null);
@@ -1753,7 +1972,14 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     document.getElementById('modal').classList.add('hidden');
     state.month = mi;
     switchTab(state.tab);
-    showToast('Opération enregistrée ✔');
+    if(compte==='livret'){
+      const lm = livretMonth(state.year, mk);
+      showToast(lm.soldeCompte==null
+        ? 'Opération enregistrée ✔'
+        : 'Opération enregistrée ✔ · solde Livret : ' + cmoney(lm.soldeCompte));
+    } else {
+      showToast('Opération enregistrée ✔');
+    }
   });
 
   window.addEventListener('resize', ()=>switchTab(state.tab));

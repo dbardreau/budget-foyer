@@ -65,6 +65,7 @@ body{
 .topbar{
   position:sticky;top:0;z-index:50;
   display:flex;align-items:center;gap:24px;
+  flex-wrap:wrap;row-gap:12px;
   padding:14px 26px;
   background:rgba(13,17,23,.82);
   backdrop-filter:blur(10px);
@@ -88,7 +89,7 @@ body{
 }
 .tab:hover{color:var(--text);background:var(--bg2)}
 .tab.active{color:#fff;background:var(--bg3);box-shadow:inset 0 0 0 1px var(--border)}
-.actions{display:flex;gap:10px;align-items:center}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-left:auto}
 .year-nav{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:3px}
 .year-nav .nav-arrow{background:none;border:none;width:28px;height:28px;border-radius:8px;font-size:18px;cursor:pointer;color:var(--text)}
 .year-nav .nav-arrow:hover{background:var(--bg3)}
@@ -187,6 +188,24 @@ body{
 .account-bar .segmented{width:min(560px,100%)}
 .account-tag{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px;background:rgba(79,156,249,.15);color:var(--accent);vertical-align:middle}
 .account-tag.livret{background:rgba(34,197,94,.15);color:var(--accent2)}
+
+/* ===== Prévisionnel de fin de mois ===== */
+.forecast-head{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;align-items:center;padding:14px 16px;border-radius:14px;background:var(--bg2);border:1px solid var(--border)}
+.forecast-head .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.forecast-head .money{font-size:18px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+.forecast-total{padding-left:16px;border-left:1px solid var(--border)}
+.forecast-total .val{font-size:28px;font-weight:700;line-height:1.15;margin-top:4px}
+.forecast-total .sub{font-size:11px;color:var(--muted)}
+.fc-h{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin:0 0 6px}
+.fc-h span{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.fc-details{margin-top:14px;border-top:1px solid var(--border);padding-top:10px}
+.fc-details summary{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;list-style:none}
+.fc-details summary::-webkit-details-marker{display:none}
+.fc-details summary::before{content:'▸';color:var(--muted);margin-right:2px;transition:transform .15s}
+.fc-details[open] summary::before{transform:rotate(90deg)}
+.fc-details .fc-sums{font-variant-numeric:tabular-nums;font-weight:700}
+.fc-details .grid2{margin-top:14px}
+@media (max-width:600px){ .forecast-total{padding-left:0;border-left:0;border-top:1px solid var(--border);padding-top:12px} }
 
 /* ===== Tables / weekly ===== */
 .weekly-grid{display:flex;flex-direction:column;gap:8px}
