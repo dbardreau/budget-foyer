@@ -224,3 +224,45 @@ body{
 .sub.lg{font-size:14px}
 .muted{color:var(--muted)}
 canvas{width:100%}
+
+/* ===== Page Graphiques ===== */
+.note{font-size:12px;line-height:1.55;margin-top:12px}
+.sankey-wrap{width:100%;margin-top:4px}
+.sankey-wrap svg{width:100%;height:auto;display:block;overflow:visible}
+
+/* Écarts « ce mois vs moyenne » */
+.diff{display:grid;grid-template-columns:200px 1fr 108px 62px;align-items:center;gap:12px;padding:6px 0}
+.diff-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.diff-label i{width:9px;height:9px;border-radius:3px;flex:none}
+.diff-track{position:relative;height:18px;background:var(--bg3);border-radius:6px;overflow:hidden}
+.diff-mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--border)}
+.diff-bar{position:absolute;top:0;bottom:0;border-radius:4px;transition:width .4s}
+.diff-bar.pos{background:var(--danger)}
+.diff-bar.neg{background:var(--accent2)}
+.diff-val{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:13px}
+.diff-val.pos{color:var(--accent2)}
+.diff-val.neg{color:var(--danger)}
+.diff-pct{text-align:right;font-size:12px}
+
+/* Heatmap saisonnalité */
+.heat{display:flex;flex-direction:column;gap:4px;margin-top:2px}
+.heat-row{display:grid;grid-template-columns:minmax(88px,1.2fr) repeat(12,minmax(0,1fr)) 74px;gap:3px;align-items:center}
+.heat-head span{font-size:10px;color:var(--muted);text-align:center}
+.heat-head .heat-label{text-align:left}
+.heat-label{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.heat-cell{height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#e6edf3;background:var(--bg3);cursor:default}
+.heat-total{text-align:right;font-size:12px}
+
+@media(max-width:700px){
+  .sankey-wrap{overflow-x:auto}
+  .sankey-wrap svg{min-width:700px}
+  #chartHeat{overflow-x:auto;padding-bottom:4px}
+  .heat{min-width:560px}
+}
+@media(max-width:640px){
+  .diff{grid-template-columns:118px 1fr 92px;gap:8px}
+  .diff-pct{display:none}
+  .heat-row{grid-template-columns:minmax(62px,1fr) repeat(12,minmax(0,1fr)) 58px;gap:2px}
+  .heat-cell{height:22px;font-size:8px}
+  .heat-total{font-size:10px}
+}

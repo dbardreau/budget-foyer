@@ -7,6 +7,7 @@
 /* ---------- Utilitaires ---------- */
 const MONTHS = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','decembre'];
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
 
 let BASE = Array.isArray(window.BUDGET2026) ? window.BUDGET2026 : [];
 /* Données de base par année : baseData = { "2026": [12 mois], "2027": [...] , … } */
@@ -490,20 +491,30 @@ function renderUserOps(mk){
 }
 
 /* ============ BUDGET ============
-   La page Budget est désormais calculée AUTOMATIQUEMENT à partir de vos
-   dépenses réelles (données de base + vos ajouts manuels, toutes années).
-   Référence par catégorie : moyenne mensuelle des dépenses réelles.
-   · Si une année antérieure existe : la référence = moyenne réelle de la
-     dernière année précédente complète.
+   La page Budget est calculée AUTOMATIQUEMENT à partir de vos dépenses
+   réelles (données de base + vos ajouts manuels, toutes années).
+   Référence par catégorie : moyenne mensuelle des dépenses réelles,
+   calculée sur les MOIS RÉELLEMENT RENSEIGNÉS (et non sur 12 mois).
+   · Si une année antérieure renseignée existe : la référence = sa moyenne
+     mensuelle réelle.
    · Sinon : la référence = moyenne réelle de l'année sélectionnée (on se cale
      sur sa propre consommation) — elle devient plus parlante dès qu'une année
      antérieure existe (créez 2027, qui servira de référence pour 2028, etc.).
    L'affichage porte toujours sur l'année sélectionnée (boutons ‹ ›). */
 
-/* Dernière année strictement antérieure à `year`, ou null s'il n'y en a pas */
-function prevYearFor(year){
-  const ys = baseYears().filter(y=>y<year);
-  return ys.length ? Math.max.apply(null, ys) : null;
+/* Mois réellement renseignés d'une année (au moins un revenu ou une dépense) */
+function activeMonthsFor(year){
+  return MONTHS.filter(mk=>{
+    const t = monthTotalsFor(year, mk);
+    return t.rev>0 || t.dep>0;
+  });
+}
+
+/* Dernière année strictement antérieure à `year` qui contient des données */
+function prevYearWithData(year){
+  const ys = baseYears().filter(y=>y<year).sort((a,b)=>b-a);
+  for(const y of ys){ if(activeMonthsFor(y).length) return y; }
+  return null;
 }
 
 /* Totaux dépenses par catégorie (base + ajouts) pour une liste de mois d'une année */
@@ -539,40 +550,24 @@ function depTotalFor(year, monthNames){
   return t;
 }
 
-/* Moyenne mensuelle des dépenses par catégorie « fixes » vs « variables »
-   (utilisée pour le donut de l'onglet Graphiques, avec de vraies données) */
-function fixedVariable(){
-  const months = MONTHS.slice();
-  const map = catTotalsFor(state.year, months);
-  const n = months.length;
-  const fixeKeys = ['logement','abonnement et téléphonie'];
-  let fixe=0, variable=0;
-  Object.keys(map).forEach(k=>{
-    const avg = map[k].total/n;
-    if(fixeKeys.some(f=>norm(f)===k)) fixe = addAmounts(fixe, avg);
-    else variable = addAmounts(variable, avg);
-  });
-  return { fixe, variable };
-}
-
-/* Référence de budget (moyenne mensuelle par catégorie) pour l'année affichée */
+/* Référence de budget (moyenne mensuelle par catégorie) pour l'année affichée.
+   nRef = nombre de mois renseignés de l'année de référence. */
 function budgetReference(){
   const year = state.year;
-  const months = MONTHS.slice();
-  const refYear = prevYearFor(year);
-  const usePrev = refYear !== null;
-  const refMk = usePrev ? yearMonths(refYear).map(m=>m.mois) : months;
-  return { year, refYear, usePrev,
-           refByCat: catTotalsFor(usePrev?refYear:year, refMk),
-           nRef: Math.max(1, refMk.length) };
+  const refYear = prevYearWithData(year) || year;
+  const usePrev = refYear !== year;
+  const nAct = activeMonthsFor(refYear).length;
+  return { year, refYear, usePrev, nAct,
+           refByCat: catTotalsFor(refYear, MONTHS.slice()),
+           nRef: nAct || 12 };
 }
 
 function renderBudget(){
   const year = state.year;
-  const { refByCat, refYear, usePrev, nRef } = budgetReference();
-  const months = MONTHS.slice();                       // les 12 mois de l'année
-  const curByCat = catTotalsFor(year, months);                  // réel de l'année affichée
-  const nCur = months.length;
+  const { refByCat, refYear, usePrev, nRef, nAct: refAct } = budgetReference();
+  const curAct = activeMonthsFor(year);                // mois renseignés de l'année affichée
+  const curByCat = catTotalsFor(year, MONTHS.slice());  // réel de l'année affichée
+  const nCur = curAct.length || 12;
 
   // Union des catégories (catégories connues + présentes dans les données)
   const seen = {}; const keys = [];
@@ -593,13 +588,14 @@ function renderBudget(){
   const projected = totalCur * 12;
 
   const note = document.getElementById('budgetNote');
+  const refTxt = refAct ? `moyenne des ${refAct} mois renseignés de ${refYear}` : `aucune donnée sur ${refYear}`;
   if(note) note.textContent = usePrev
-    ? `Budget calculé automatiquement d'après votre consommation réelle (saisies + ajouts manuels). La colonne « Budget » = moyenne mensuelle des dépenses de ${refYear} ; « Réel » = moyenne mensuelle sur l'année ${year}.`
-    : `Budget calculé automatiquement d'après votre consommation réelle (saisies + ajouts manuels) sur l'année ${year}. Il gagnera en pertinence dès qu'une année antérieure existera (créez 2027 avec ‹ › : elle servira de référence pour les années suivantes).`;
+    ? `Budget calculé automatiquement d'après votre consommation réelle (saisies + ajouts manuels). La colonne « Budget » = ${refTxt} ; « Réel » = moyenne des ${curAct.length} mois renseignés de ${year}.`
+    : `Budget calculé automatiquement d'après votre consommation réelle (saisies + ajouts manuels) : ${refTxt}. Il gagnera en pertinence dès qu'une année antérieure existera (créez 2027 avec ‹ › : elle servira de référence pour les années suivantes).`;
 
   const kpis = [
-    {cls:'blue',  label:'Budget de référence / mois', val:cmoney(totalRef),  sub: usePrev?('moyenne réelle '+refYear):('moyenne réelle '+year)},
-    {cls:'red',   label:'Dépense moyenne / mois',     val:cmoney(totalCur),  sub:'année '+year+', ajouts inclus'},
+    {cls:'blue',  label:'Budget de référence / mois', val:cmoney(totalRef),  sub:'moyenne réelle '+refYear+' · '+refAct+' mois'},
+    {cls:'red',   label:'Dépense moyenne / mois',     val:cmoney(totalCur),  sub:'somme des catégories · '+curAct.length+' mois renseignés'},
     {cls: ecartTotal<=0?'green':'red', label: ecartTotal<=0?'Sous budget':'Dépassement', val:(ecartTotal<=0?'':'+')+fmt(ecartTotal)+' €', sub:'réel − budget (par mois)'},
     {cls:'violet',label:'Dépense projetée (×12)',     val:cmoney(projected), sub:'si la moyenne se maintient'},
   ];
@@ -625,7 +621,7 @@ function renderBudget(){
 /* Suivi du MOIS EN COURS : budget mensuel vs ce qui est déjà dépensé ce mois-ci */
 function renderBudgetMonth(){
   const year = state.year;
-  const { refByCat, refYear, usePrev, nRef } = budgetReference();
+  const { refByCat, refYear, usePrev, nRef, nAct: refAct } = budgetReference();
   const mk = MONTHS[state.month];
   const title = MONTHS_FR[state.month] + ' ' + year;
   const elTitle = document.getElementById('budgetMonthTitle');
@@ -654,9 +650,9 @@ function renderBudgetMonth(){
   const restTotal = budgetM - spentM;
 
   const note = document.getElementById('budgetMonthNote');
-  if(note) note.textContent = usePrev
-    ? `Votre budget mensuel de référence (moyenne réelle de ${refYear}) comparé à ce que vous avez dépensé en ${MONTHS_FR[state.month]} ${year}.`
-    : `Votre budget mensuel de référence (moyenne réelle de ${year}) — il deviendra plus parlant dès qu'une année antérieure existera.`;
+  if(note) note.textContent = refAct
+    ? `Votre budget mensuel de référence (moyenne des ${refAct} mois renseignés de ${refYear}) comparé à ce que vous avez dépensé en ${MONTHS_FR[state.month]} ${year}.`
+    : `Aucune donnée de référence sur ${refYear} : ajoutez des dépenses pour voir apparaître votre budget mensuel.`;
 
   const kpis = [
     {cls:'blue', label:'Budget du mois', val:cmoney(budgetM), sub:'référence mensuelle'},
@@ -689,32 +685,264 @@ function renderBudgetMonth(){
   }).join('');
 }
 
-/* ============ GRAPHIQUES ============ */
-function renderCharts(){
-  // stacked bars : grandes catégories via quelques agrégats
-  const groups = [
-    {label:'Logement', color:'#38bdf8', keys:['logement']},
-    {label:'Vie quotidienne', color:'#facc15', keys:['vie quotidienne']},
-    {label:'Transports', color:'#a78bfa', keys:['voyage et transport','auto moto']},
-    {label:'Santé', color:'#e879f9', keys:['santé']},
-    {label:'Autres', color:'#94a3b8', keys:['abonnement et téléphonie','cadeaux et solidarité','Opération banquaire','education et famille','autre','impots et taxe','loisir','mouvement interne débiteur']},
-  ];
-  const series = groups.map(g=>({
-    name:g.label, color:g.color,
-    values: MONTHS.map(mk=>{ const map=catTotalsMk(mk); return g.keys.reduce((s,k)=>s+(map[norm(k)]?map[norm(k)].total:0),0); })
-  }));
-  drawStacked('chartStacked', {labels:MONTHS_FR.map(m=>m.slice(0,3)), series});
+/* ============================================================
+   GRAPHIQUES — tableau de bord analytique
+   Choix retenus d'après les logiciels de gestion de budget
+   (Monarch Money, YNAB, Copilot, BudgetLabs…) :
+     · Sankey de flux        → « où va l'argent » (Monarch)
+     · Tendance + moy. mobile→ trajectoire réelle (Copilot)
+     · Épargne cumulée       → trajectoire d'épargne (net worth)
+     · Ce mois vs moyenne    → écarts / dérapages (anomalies)
+     · Treemap               → poids des postes (Monarch)
+     · Heatmap               → saisonnalité (BudgetLabs, Finny)
+   ============================================================ */
 
-  const restes = MONTHS.map(mk=>monthWithOps(mk).somme);
-  drawBarChart('chartRestante', { labels:MONTHS_FR.map(m=>m.slice(0,3)), series:[{name:'Solde', color:()=>0, mode:'single', values:restes}] }, {single:true});
-  const fv = fixedVariable();
-  if(fv && fv.fixe+fv.variable>0){
-    drawDonut('chartFixeVar', [
-      {label:'Charges fixes', color:'#ef4444', v:fv.fixe},
-      {label:'Charges variables', color:'#4f9cf9', v:fv.variable},
-    ], true);
-  }
+/* Regroupement des catégories pour le Sankey et le treemap */
+const CHART_GROUPS = [
+  {label:'Logement',                 color:'#38bdf8', keys:['logement']},
+  {label:'Vie quotidienne',           color:'#facc15', keys:['vie quotidienne']},
+  {label:'Auto & transport',          color:'#a78bfa', keys:['auto moto','voyage et transport']},
+  {label:'Santé',                     color:'#e879f9', keys:['santé']},
+  {label:'Abonnements',               color:'#4f9cf9', keys:['abonnement et téléphonie']},
+  {label:'Loisirs, cadeaux & famille',color:'#fb7185', keys:['loisir','cadeaux et solidarité','education et famille']},
+  {label:'Impôts & frais bancaires',  color:'#ef4444', keys:['impots et taxe','Opération banquaire']},
+  {label:'Virements internes',        color:'#2dd4bf', keys:['mouvement interne débiteur']},
+];
+
+/* Totaux (base + ajouts) d'un mois, pour une année donnée */
+function monthTotalsFor(year, mk){
+  const m = yearMonths(year).find(x=>x.mois===mk) || emptyMonth(mk);
+  const ops = (userOps[String(year)]||{})[mk] || [];
+  let rev = baseRevTotal(m), dep = baseDepTotal(m);
+  ops.forEach(o=>{
+    if(o.type==='revenu') rev = addAmounts(rev, o.amount);
+    else if(o.type==='depense') dep = addAmounts(dep, o.amount);
+  });
+  return {rev, dep, solde:addAmounts(rev, -dep)};
 }
+
+/* Matrice catégorie × mois : { clé: { label, color, values[12], total } } */
+function catMonthly(year){
+  const per = {};
+  MONTHS.forEach((mk,i)=>{
+    const map = catTotalsFor(year, [mk]);
+    Object.keys(map).forEach(k=>{
+      const label = map[k].label;
+      if(!per[k]) per[k] = { label, color:catMeta(label).color, values:new Array(12).fill(0), total:0 };
+      per[k].values[i] = map[k].total;
+      per[k].total = addAmounts(per[k].total, map[k].total);
+    });
+  });
+  return per;
+}
+
+/* Sources de revenus d'un mois (base + ajouts) */
+function revenueSourcesFor(mk){
+  const w = monthWithOps(mk);
+  const map = {};
+  (w.month.revenus||[]).forEach(r=>{
+    const k = norm(r.nom);
+    if(!map[k]) map[k] = {label:r.nom, total:0};
+    map[k].total = addAmounts(map[k].total, parseAmount(r.montant));
+  });
+  w.revOps.forEach(o=>{
+    const k = norm(o.cat);
+    if(!map[k]) map[k] = {label:o.cat, total:0};
+    map[k].total = addAmounts(map[k].total, o.amount);
+  });
+  return Object.values(map).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+}
+
+function kpiCards(items){
+  return items.map(k=>`
+    <div class="kpi ${k.cls}"><div class="label">${k.label}</div>
+    <div class="val ${k.cls==='red'?'neg':k.cls==='green'?'pos':''}" style="${k.small?'font-size:18px':''}">${k.val}</div>
+    <div class="sub">${k.sub}</div></div>`).join('');
+}
+
+function renderCharts(){
+  const year = state.year;
+  const mk = MONTHS[state.month];
+  const t = document.getElementById('chartMonthTitle');
+  if(t) t.textContent = MONTHS_FR[state.month] + ' ' + year;
+
+  const per = catMonthly(year);
+  const months = MONTHS.map(m=>monthTotalsFor(year, m));
+  const act = activeMonthsFor(year);
+  const nAct = act.length || 1;
+  const depYear = months.reduce((s,x)=>s+x.dep, 0);
+  const revYear = months.reduce((s,x)=>s+x.rev, 0);
+  const list = Object.values(per).sort((a,b)=>b.total-a.total);
+  const top = list[0];
+  const rate = revYear>0 ? (revYear-depYear)/revYear*100 : 0;
+
+  document.getElementById('chartKpis').innerHTML = kpiCards([
+    {cls:'red',  label:'Dépenses '+year,   val:cmoney(depYear), sub:act.length+' mois renseignés'},
+    {cls:'blue', label:'Moyenne par mois', val:cmoney(depYear/nAct), sub:'sur les mois renseignés'},
+    {cls: rate<0?'red':(rate<10?'warn':'green'), label:"Taux d'épargne", val:fmt(rate,1)+' %', sub:'revenus − dépenses'},
+    {cls:'violet', label:'Poste n°1', val:top?top.label:'—',
+      sub: top ? cmoney(top.total)+' · '+Math.round(top.total/(depYear||1)*100)+' % du total' : 'aucune donnée', small:true},
+  ]);
+
+  renderSankey(mk);
+  renderTrend(months, act);
+  renderSavings();
+  renderVsAvg(per, act, mk);
+  renderTreemap(list, depYear);
+  renderHeat(list);
+}
+
+/* ---------- 1. Sankey : où va votre argent ? ---------- */
+function renderSankey(mk){
+  const box = document.getElementById('chartSankey');
+  if(!box) return;
+
+  const map = catTotalsMk(mk);
+  const groups = CHART_GROUPS.map(g=>({label:g.label, color:g.color, keys:g.keys.map(norm), total:0}));
+  const catchAll = {label:'Autres', color:'#94a3b8', keys:[], total:0};
+  Object.keys(map).forEach(k=>{
+    const v = map[k].total;
+    if(!(v>0)) return;
+    const g = groups.find(gr=>gr.keys.includes(k));
+    if(g) g.total = addAmounts(g.total, v);
+    else catchAll.total = addAmounts(catchAll.total, v);
+  });
+  const outs = groups.filter(g=>g.total>0).map(g=>({label:g.label, color:g.color, v:g.total}));
+  if(catchAll.total>0) outs.push({label:catchAll.label, color:catchAll.color, v:catchAll.total});
+
+  const ins = revenueSourcesFor(mk).map(s=>({label:s.label, color:revColor(s.label), v:s.total}));
+
+  const sumIn = ins.reduce((s,n)=>s+n.v, 0);
+  const sumOut = outs.reduce((s,n)=>s+n.v, 0);
+  const solde = Math.round((sumIn-sumOut)*100)/100;
+
+  if(solde>0) outs.push({label:'Épargne du mois', color:'#22c55e', v:solde});
+  if(solde<0) ins.push({label:'Épargne mobilisée', color:'#ef4444', v:-solde});
+
+  const note = document.getElementById('sankeyNote');
+  if(note) note.textContent = MONTHS_FR[state.month]+' '+state.year+' : '
+    + ins.length + ' entrée'+(ins.length>1?'s':'') + ' → ' + outs.length + ' poste'+(outs.length>1?'s':'')
+    + '. L\'épaisseur des rubans est proportionnelle aux montants ; les virements internes sont isolés.';
+
+  drawSankey('chartSankey', ins, outs);
+}
+
+/* ---------- 2. Tendance + moyenne mobile ---------- */
+function renderTrend(months, act){
+  const dep = MONTHS.map((m,i)=> act.includes(m) ? months[i].dep : null);
+  const rev = MONTHS.map((m,i)=> act.includes(m) ? months[i].rev : null);
+  const ma  = MONTHS.map((m)=>{
+    if(!act.includes(m)) return null;
+    const i = act.indexOf(m);
+    const win = act.slice(Math.max(0, i-2), i+1).map(x=>months[MONTHS.indexOf(x)].dep);
+    return win.reduce((s,v)=>s+v,0)/win.length;
+  });
+  drawLineChart('chartTrend', {
+    labels: MONTHS_SHORT,
+    series:[
+      {name:'Dépenses',       color:'#ef4444', values:dep, fill:true},
+      {name:'Moyenne 3 mois', color:'#4f9cf9', values:ma,  width:2.4},
+      {name:'Revenus',        color:'#22c55e', values:rev, dashed:true, width:1.6},
+    ]
+  });
+}
+
+/* ---------- 3. Épargne cumulée ---------- */
+function renderSavings(){
+  let acc = 0; const cum = [];
+  MONTHS.forEach(mk=>{
+    const w = monthWithOps(mk);
+    if(w.revTotal===0 && w.depTotal===0){ cum.push(null); return; }
+    acc = addAmounts(acc, w.somme);
+    cum.push(acc);
+  });
+  drawLineChart('chartSavings', {
+    labels: MONTHS_SHORT,
+    signed:true, legend:false,
+    series:[{name:'Épargne cumulée', color:'#22c55e', values:cum, signed:true, width:2.6, lastLabel:true}],
+  });
+}
+
+/* ---------- 4. Ce mois vs la moyenne des autres mois ---------- */
+function renderVsAvg(per, act, mk){
+  const box = document.getElementById('chartVsAvg');
+  const title = document.getElementById('vsAvgTitle');
+  const note = document.getElementById('vsAvgNote');
+  const label = MONTHS_FR[state.month] + ' ' + state.year;
+  if(title) title.textContent = label + ' vs votre moyenne';
+
+  const others = act.filter(m=>m!==mk);
+  if(others.length<1){
+    box.innerHTML = '<div class="muted" style="font-size:13px">Pas encore assez de mois renseignés pour établir une moyenne.</div>';
+    if(note) note.textContent = '';
+    return;
+  }
+  const idx = MONTHS.indexOf(mk);
+  const rows = Object.keys(per).map(k=>{
+    const it = per[k];
+    const spent = it.values[idx];
+    const avg = others.reduce((s,m)=>s+it.values[MONTHS.indexOf(m)],0)/others.length;
+    return {label:it.label, color:it.color, spent, avg, diff:spent-avg,
+            pct: avg>0 ? (spent-avg)/avg*100 : null};
+  }).filter(r=> Math.abs(r.diff)>=0.5 && (r.spent>0 || r.avg>0))
+    .sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff)).slice(0,10);
+
+  if(!rows.length){
+    box.innerHTML = '<div class="muted" style="font-size:13px">Aucune variation notable ce mois-ci.</div>';
+    if(note) note.textContent = '';
+    return;
+  }
+  const max = Math.max.apply(null, rows.map(r=>Math.abs(r.diff))) || 1;
+  box.innerHTML = rows.map(r=>{
+    const w = Math.abs(r.diff)/max*50;
+    const pos = r.diff>=0;
+    const style = pos ? `left:50%;width:${w}%` : `left:${50-w}%;width:${w}%`;
+    const pct = r.pct===null ? 'nouveau' : (r.pct>=0?'+':'')+Math.round(r.pct)+' %';
+    return `<div class="diff">
+      <span class="diff-label"><i style="background:${r.color}"></i>${e(r.label)}</span>
+      <div class="diff-track"><span class="diff-mid"></span><span class="diff-bar ${pos?'pos':'neg'}" style="${style}"></span></div>
+      <span class="diff-val ${pos?'neg':'pos'}">${pos?'+':''}${fmt(r.diff,0)} €</span>
+      <span class="diff-pct muted">${pct}</span>
+    </div>`;
+  }).join('');
+  if(note) note.textContent = `Écart entre ${label} et la moyenne de vos ${others.length} autres mois renseignés. `
+    + `Rouge = plus que d'habitude, vert = moins. Dépensé ce mois : ${cmoney(rows.reduce((s,r)=>s+r.spent,0))} sur les postes affichés.`;
+}
+
+/* ---------- 5. Treemap ---------- */
+function renderTreemap(list, total){
+  const items = []; let other = 0;
+  list.forEach(it=>{
+    if(!(it.total>0)) return;
+    if(it.total/(total||1) < 0.015) other = addAmounts(other, it.total);
+    else items.push({label:it.label, color:it.color, v:it.total});
+  });
+  if(other>0) items.push({label:'Autres', color:'#64748b', v:other});
+  drawTreemap('chartTreemap', items);
+}
+
+/* ---------- 6. Heatmap saisonnalité ---------- */
+function renderHeat(list){
+  const box = document.getElementById('chartHeat');
+  if(!box) return;
+  const items = list.filter(it=>it.total>0).slice(0,10);
+  if(!items.length){ box.innerHTML = '<div class="muted" style="font-size:13px">Aucune donnée.</div>'; return; }
+  let html = '<div class="heat-row heat-head"><span class="heat-label"></span>'
+    + MONTHS_FR.map(m=>`<span>${m[0]}</span>`).join('')
+    + '<span class="heat-total"></span></div>';
+  items.forEach(it=>{
+    const max = Math.max.apply(null, it.values.concat([1]));
+    html += `<div class="heat-row"><span class="heat-label" title="${e(it.label)}">${e(it.label)}</span>`;
+    it.values.forEach((v,i)=>{
+      const bg = v>0 ? hexA(it.color, 0.10 + (v/max)*0.78) : 'transparent';
+      const txt = v>=1000 ? (v/1000).toFixed(1).replace('.',',')+'k' : (v>0?String(Math.round(v)):'');
+      html += `<span class="heat-cell" style="background:${bg}" title="${e(it.label)} — ${MONTHS_FR[i]} : ${cmoney(v)}">${txt}</span>`;
+    });
+    html += `<span class="heat-total money">${cmoney(it.total)}</span></div>`;
+  });
+  box.innerHTML = html;
+}
+
 
 /* ============ Ajout d'opération ============ */
 function openModal(){
@@ -856,32 +1084,247 @@ function drawDonut(id, entries, isFixeVar){
   }
 }
 
-function drawStacked(id, data){
+/* rgba() depuis une couleur hexadécimale */
+function hexA(hex, a){
+  let h = String(hex||'#888').replace('#','');
+  if(h.length===3) h = h.split('').map(c=>c+c).join('');
+  const n = parseInt(h,16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+/* Luminance approximative (0 = sombre, 1 = clair) pour choisir un texte lisible */
+function colorLum(hex){
+  let h = String(hex||'#888').replace('#','');
+  if(h.length===3) h = h.split('').map(c=>c+c).join('');
+  const n = parseInt(h,16);
+  return (0.299*((n>>16)&255) + 0.587*((n>>8)&255) + 0.114*(n&255))/255;
+}
+function truncText(ctx, s, maxW){
+  s = String(s);
+  if(ctx.measureText(s).width<=maxW) return s;
+  while(s.length>1 && ctx.measureText(s+'…').width>maxW) s = s.slice(0,-1);
+  return s+'…';
+}
+function roundRect(ctx,x,y,w,h,r){
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+/* Courbe / aire avec valeurs nulles autorisées (trous) */
+function drawLineChart(id, cfg){
   const {ctx,w,h} = dprCanvas(id);
   ctx.clearRect(0,0,w,h);
-  const padL=52, padR=10, padT=16, padB=26;
-  const chartW=w-padL-padR, chartH=h-padT-padB;
-  let max=0;
-  data.series.forEach(sr=>sr.values.forEach(v=>{ if(v>max)max=v; }));
-  max=Math.ceil(max*1.1/100)*100||100;
-  const slot=chartW/data.labels.length, bw=Math.min(slot*0.55,36);
-  ctx.strokeStyle='#222b3a';
-  for(let i=0;i<=4;i++){ const y=padT+chartH-chartH*i/4; ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(w-padR,y);ctx.stroke(); text(ctx,padL-8,y,fmt(max*i/4),{align:'right'}); }
-  data.series.forEach(sr=>{
-    sr.values.forEach((v,i)=>{
-      // on empile : on calcule la somme des segments déjà posés en colonne i
-      let acc=0;
-      data.series.forEach(s2=>{ if(data.series.indexOf(s2)<data.series.indexOf(sr)) acc+=s2.values[i]; });
-      const y0 = padT+chartH - (acc/max)*chartH;
-      const hhi = (v/max)*chartH;
-      const x = padL + i*slot + slot/2 - bw/2;
-      ctx.fillStyle=sr.color;
-      ctx.fillRect(x, y0-hhi, bw, hhi-1);
+  const showLegend = cfg.legend !== false;
+  const padL=64, padR=20, padT=showLegend?36:20, padB=28;
+  const cw=w-padL-padR, ch=h-padT-padB;
+  const vals=[];
+  cfg.series.forEach(s=>s.values.forEach(v=>{ if(v!==null && v!==undefined) vals.push(v); }));
+  if(!vals.length){ text(ctx,w/2,h/2,'Aucune donnée',{font:'13px Segoe UI'}); return; }
+
+  let hi = Math.max.apply(null, vals);
+  let lo = cfg.signed ? Math.min.apply(null, vals) : 0;
+  if(hi===lo) hi = lo + (lo===0?100:Math.abs(lo)*0.5);
+  const span = hi-lo;
+  hi += span*0.12;
+  if(cfg.signed) lo -= span*0.12; else lo = 0;
+
+  const X = i => padL + (cfg.labels.length>1 ? cw*i/(cfg.labels.length-1) : cw/2);
+  const Y = v => padT + ch - (v-lo)/(hi-lo)*ch;
+
+  ctx.strokeStyle='#222b3a'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const val = lo + (hi-lo)*i/4, y = Y(val);
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke();
+    text(ctx,padL-10,y,fmt(val,0),{align:'right',font:'10px Segoe UI'});
+  }
+  if(cfg.signed && lo<0 && hi>0){
+    ctx.strokeStyle='#46516280';
+    ctx.beginPath(); ctx.moveTo(padL,Y(0)); ctx.lineTo(w-padR,Y(0)); ctx.stroke();
+  }
+
+  cfg.series.forEach(s=>{
+    const v = s.values;
+    // aire
+    if(s.fill || s.signed){
+      for(let i=0;i<v.length-1;i++){
+        const a=v[i], b=v[i+1];
+        if(a==null || b==null) continue;
+        ctx.beginPath();
+        ctx.moveTo(X(i),Y(a)); ctx.lineTo(X(i+1),Y(b));
+        ctx.lineTo(X(i+1),Y(0)); ctx.lineTo(X(i),Y(0)); ctx.closePath();
+        ctx.fillStyle = s.signed ? hexA(((a+b)/2)<0?'#ef4444':'#22c55e',0.15) : hexA(s.color,0.13);
+        ctx.fill();
+      }
+    }
+    // ligne
+    ctx.lineWidth = s.width||2;
+    ctx.strokeStyle = s.color;
+    ctx.setLineDash(s.dashed?[5,4]:[]);
+    ctx.beginPath();
+    let started=false;
+    v.forEach((val,i)=>{
+      if(val==null){ started=false; return; }
+      const px=X(i), py=Y(val);
+      if(!started){ ctx.moveTo(px,py); started=true; } else ctx.lineTo(px,py);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+    // points
+    v.forEach((val,i)=>{
+      if(val==null) return;
+      ctx.beginPath(); ctx.arc(X(i),Y(val),2.6,0,Math.PI*2);
+      ctx.fillStyle=s.color; ctx.fill();
+    });
+    // étiquette sur la dernière valeur
+    if(s.lastLabel){
+      let idx=-1; v.forEach((val,i)=>{ if(val!=null) idx=i; });
+      if(idx>=0){
+        text(ctx, Math.min(w-padR-6, X(idx)), Y(v[idx])-13, fmt(v[idx],0)+' €',
+          {align:'right', color:s.color, font:'bold 11px Segoe UI'});
+      }
+    }
+  });
+
+  if(showLegend){
+    let lx = padL;
+    cfg.series.forEach(s=>{
+      ctx.fillStyle = s.color; ctx.fillRect(lx,11,11,4);
+      text(ctx,lx+17,13,s.name,{align:'left',color:'#e6edf3',font:'11px Segoe UI'});
+      lx += 30 + ctx.measureText(s.name).width;
+    });
+  }
+  cfg.labels.forEach((l,i)=>text(ctx,X(i),h-11,l,{font:'10px Segoe UI'}));
+}
+
+/* Treemap « squarifié » : blocs proportionnels, les plus lisibles possible */
+function squarify(values, x, y, w, h){
+  const out = [];
+  let rest = values.slice();
+  let rx=x, ry=y, rw=w, rh=h;
+  let guard = 0;
+  while(rest.length && guard++<200){
+    if(rw<=0.5 || rh<=0.5) break;
+    const short = Math.min(rw,rh);
+    let count=0, sum=0, best=Infinity;
+    for(let i=0;i<rest.length;i++){
+      const s2 = sum + rest[i];
+      let worst = 0;
+      for(let j=0;j<=i;j++){
+        const len = rest[j]*short/s2;
+        const thick = s2/short;
+        worst = Math.max(worst, Math.max(thick/len, len/thick));
+      }
+      if(worst<=best){ best=worst; sum=s2; count=i+1; } else break;
+    }
+    if(!count){ count=1; sum=rest[0]; }
+    const row = rest.slice(0,count);
+    rest = rest.slice(count);
+    let off=0;
+    if(rw>=rh){
+      const sw = sum/rh;
+      row.forEach(v=>{ const vh = v/sw; out.push({x:rx, y:ry+off, w:sw, h:vh}); off+=vh; });
+      rx += sw; rw -= sw;
+    } else {
+      const sh = sum/rw;
+      row.forEach(v=>{ const vw = v/sh; out.push({x:rx+off, y:ry, w:vw, h:sh}); off+=vw; });
+      ry += sh; rh -= sh;
+    }
+  }
+  return out;
+}
+
+function drawTreemap(id, items){
+  const {ctx,w,h} = dprCanvas(id);
+  ctx.clearRect(0,0,w,h);
+  const list = items.filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  const total = list.reduce((s,x)=>s+x.v,0);
+  if(!total){ text(ctx,w/2,h/2,'Aucune donnée',{font:'13px Segoe UI'}); return; }
+  const rects = squarify(list.map(x=>x.v/total*w*h), 0,0,w,h);
+  rects.forEach((r,i)=>{
+    const it = list[i];
+    if(!it) return;
+    const p=2, x=r.x+p, y=r.y+p, ww=r.w-p*2, hh=r.h-p*2;
+    if(ww<1 || hh<1) return;
+    ctx.fillStyle = it.color;
+    roundRect(ctx,x,y,ww,hh,5); ctx.fill();
+    const fg = colorLum(it.color)>0.62 ? '#0d1117' : '#ffffff';
+    ctx.textAlign='left'; ctx.textBaseline='top';
+    if(ww>78 && hh>34){
+      ctx.fillStyle=fg; ctx.font='bold 11px Segoe UI';
+      ctx.fillText(truncText(ctx,it.label,ww-16), x+8, y+7);
+      ctx.font='10px Segoe UI'; ctx.globalAlpha=0.85;
+      ctx.fillText(cmoney(it.v), x+8, y+22);
+      ctx.font='9.5px Segoe UI';
+      ctx.fillText(Math.round(it.v/total*100)+' %', x+8, y+35);
+      ctx.globalAlpha=1;
+    } else if(ww>50 && hh>18){
+      ctx.fillStyle=fg; ctx.font='9px Segoe UI';
+      ctx.fillText(truncText(ctx,it.label,ww-10), x+6, y+hh/2-5);
+    }
+  });
+}
+
+/* Sankey : revenus (gauche) → postes de dépense (droite) */
+function drawSankey(id, ins, outs){
+  const box = document.getElementById(id);
+  if(!box) return;
+  const totalIn = ins.reduce((s,n)=>s+n.v,0);
+  const totalOut = outs.reduce((s,n)=>s+n.v,0);
+  if(!(totalIn>0) || !(totalOut>0)){
+    box.innerHTML = '<div class="muted" style="padding:26px 0;text-align:center;font-size:13px">Aucune donnée pour ce mois.</div>';
+    return;
+  }
+  const W=1000, gap=9, padT=14;
+  const nMax = Math.max(ins.length, outs.length);
+  const H = Math.max(320, 110 + nMax*40);
+  const usable = H - padT*2 - gap*(nMax-1);
+  const scale = usable/Math.max(totalIn,totalOut);
+
+  let y = padT;
+  ins.forEach(n=>{ n.h=Math.max(3,n.v*scale); n.y0=y; y+=n.h+gap; });
+  y = padT;
+  outs.forEach(n=>{ n.h=Math.max(3,n.v*scale); n.y0=y; y+=n.h+gap; });
+
+  const nLX=158, nLW=10, fx0=176, fx1=W-216, nRX=W-206, labL=148, labR=W-186, mid=(fx0+fx1)/2;
+
+  let bands='';
+  outs.forEach(n=>n.cur=n.y0);
+  ins.forEach(iN=>{
+    let sy=iN.y0;
+    outs.forEach(oN=>{
+      const hh = iN.v*oN.v/totalOut*scale;
+      if(hh>0.4){
+        const a=sy.toFixed(1), b=(sy+hh).toFixed(1), c=oN.cur.toFixed(1), d=(oN.cur+hh).toFixed(1);
+        bands += `<path d="M${fx0},${a} C${mid},${a} ${mid},${c} ${fx1},${c} L${fx1},${d} C${mid},${d} ${mid},${b} ${fx0},${b} Z" fill="${oN.color}" fill-opacity="0.24"/>`;
+      }
+      sy+=hh; oN.cur+=hh;
     });
   });
-  let lx=padL;
-  data.series.forEach(sr=>{ ctx.fillStyle=sr.color; ctx.fillRect(lx,6,10,10); text(ctx,lx+16,11,sr.name,{align:'left',color:'#e6edf3',font:'11px Segoe UI'}); lx+=30+ctx.measureText(sr.name).width+16; });
-  data.labels.forEach((l,i)=>text(ctx,padL+i*slot+slot/2,h-12,l,{color:'#8b96a5',font:'11px Segoe UI'}));
+
+  function node(n, x, labX, anchor){
+    const cy = n.y0 + n.h/2;
+    const maxCh = anchor==='end' ? 21 : 26;
+    const name = e(n.label.length>maxCh ? n.label.slice(0,maxCh-1)+'…' : n.label);
+    let txt = '';
+    if(n.h>26){
+      txt = `<text x="${labX}" y="${(cy-2).toFixed(1)}" text-anchor="${anchor}" font-size="12.5" font-family="Segoe UI" fill="#e6edf3">${name}</text>`
+          + `<text x="${labX}" y="${(cy+12).toFixed(1)}" text-anchor="${anchor}" font-size="10.5" font-family="Segoe UI" fill="#8b96a5">${cmoney(n.v)}</text>`;
+    } else if(n.h>9){
+      txt = `<text x="${labX}" y="${(cy+4).toFixed(1)}" text-anchor="${anchor}" font-size="12" font-family="Segoe UI" fill="#e6edf3">${name}</text>`;
+    }
+    return `<g><title>${e(n.label)} : ${cmoney(n.v)}</title>`
+         + `<rect x="${x}" y="${n.y0.toFixed(1)}" width="${nLW}" height="${n.h.toFixed(1)}" rx="3" fill="${n.color}"/>${txt}</g>`;
+  }
+
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Flux des revenus vers les postes de dépense">
+    ${bands}
+    ${ins.map(n=>node(n,nLX,labL,'end')).join('')}
+    ${outs.map(n=>node(n,nRX,labR,'start')).join('')}
+  </svg>`;
 }
 
 /* ============ GESTION DES CATÉGORIES ============ */
@@ -971,6 +1414,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   const bPM=document.getElementById('prevBudgetMonth'), bNM=document.getElementById('nextBudgetMonth');
   if(bPM) bPM.onclick=()=>{ state.month=(state.month+11)%12; renderBudgetMonth(); };
   if(bNM) bNM.onclick=()=>{ state.month=(state.month+1)%12; renderBudgetMonth(); };
+  const bCM=document.getElementById('prevChartMonth'), nCM=document.getElementById('nextChartMonth');
+  if(bCM) bCM.onclick=()=>{ state.month=(state.month+11)%12; renderCharts(); };
+  if(nCM) nCM.onclick=()=>{ state.month=(state.month+1)%12; renderCharts(); };
   document.getElementById('prevYear').onclick=()=>changeYear(-1);
   document.getElementById('nextYear').onclick=()=>changeYear(1);
   document.getElementById('btnAdd').onclick=openModal;

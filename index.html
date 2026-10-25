@@ -107,19 +107,6 @@
   <section id="tab-budget" class="panel">
     <div class="kpis" id="budgetKpis"></div>
     <div class="card">
-      <h3>Budget mensuel automatisé</h3>
-      <p class="muted" style="font-size:13px" id="budgetNote"></p>
-      <div class="table-wrap">
-        <table class="table" id="budgetTable">
-          <thead>
-            <tr><th>Catégorie</th><th>Budget (réf. / mois)</th><th>Réel moyen / mois</th><th>Écart / mois</th><th>Statut</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
       <div class="month-selector" style="margin-bottom:6px">
         <button id="prevBudgetMonth" class="nav-arrow">‹</button>
         <h2 id="budgetMonthTitle" style="font-size:18px">—</h2>
@@ -137,22 +124,67 @@
         </table>
       </div>
     </div>
+
+    <div class="card">
+      <h3>Budget mensuel automatisé</h3>
+      <p class="muted" style="font-size:13px" id="budgetNote"></p>
+      <div class="table-wrap">
+        <table class="table" id="budgetTable">
+          <thead>
+            <tr><th>Catégorie</th><th>Budget (réf. / mois)</th><th>Réel moyen / mois</th><th>Écart / mois</th><th>Statut</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <!-- ============ GRAPHIQUES ============ -->
   <section id="tab-charts" class="panel">
-    <div class="card">
-      <h3>Évolution mensuelle des dépenses par grande catégorie</h3>
-      <canvas id="chartStacked" height="320"></canvas>
+    <div class="month-selector">
+      <button id="prevChartMonth" class="nav-arrow">‹</button>
+      <h2 id="chartMonthTitle" style="font-size:18px">—</h2>
+      <button id="nextChartMonth" class="nav-arrow">›</button>
     </div>
+    <p class="muted note" style="text-align:center;margin:0 0 8px">Le mois choisi s'applique au Sankey et à la comparaison mensuelle ; les autres graphiques portent sur l'année entière.</p>
+
+    <div class="kpis" id="chartKpis"></div>
+
+    <div class="card">
+      <h3>Où va votre argent ?</h3>
+      <div id="chartSankey" class="sankey-wrap"></div>
+      <p class="muted note" id="sankeyNote"></p>
+    </div>
+
     <div class="grid2">
       <div class="card">
-        <h3>Somme restante mensuelle</h3>
-        <canvas id="chartRestante" height="260"></canvas>
+        <h3>Tendance des dépenses</h3>
+        <canvas id="chartTrend" height="300"></canvas>
+        <p class="muted note">La courbe lissée (moyenne mobile sur 3 mois) gomme les pics ponctuels pour révéler la vraie trajectoire.</p>
       </div>
       <div class="card">
-        <h3>Répartition fixe / variable (budget)</h3>
-        <canvas id="chartFixeVar" height="260"></canvas>
+        <h3>Épargne cumulée</h3>
+        <canvas id="chartSavings" height="300"></canvas>
+        <p class="muted note">Cumul des soldes mensuels (revenus − dépenses). La courbe qui monte = de l'argent mis de côté.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 id="vsAvgTitle">Ce mois vs votre moyenne</h3>
+      <div id="chartVsAvg"></div>
+      <p class="muted note" id="vsAvgNote"></p>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Répartition annuelle</h3>
+        <canvas id="chartTreemap" height="330"></canvas>
+        <p class="muted note">Chaque bloc est proportionnel au montant dépensé sur l'année. Les petits postes sont regroupés.</p>
+      </div>
+      <div class="card">
+        <h3>Saisonnalité par catégorie</h3>
+        <div id="chartHeat" class="heat"></div>
+        <p class="muted note">Plus la case est vive, plus vous avez dépensé dans cette catégorie ce mois-là (intensité relative à la catégorie).</p>
       </div>
     </div>
   </section>
