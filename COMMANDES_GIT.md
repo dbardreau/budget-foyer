@@ -3,6 +3,33 @@
 Bienvenue ! Ce guide t'explique, étape par étape, comment publier
 les modifications de ton site sur GitHub.
 
+## ⚡ Le plus simple : le bouton « Publier Budget »
+
+Plus besoin de terminal : va sur ton **Bureau** et double-clique sur
+l'icône **« Publier Budget »**.
+
+Il fait exactement les 3 commandes à ta place (`git add .`, `git commit`,
+`git push`) et affiche un compte rendu clair :
+
+- la liste des fichiers qui vont être publiés ;
+- `[1/2] Modifications enregistrées` puis `[2/2] Envoi vers GitHub` ;
+- **C'EST PUBLIÉ !** en vert si tout s'est bien passé ;
+- si GitHub a changé entre-temps, il tente automatiquement une
+  synchronisation avant de renvoyer.
+
+Le bouton correspond à ces deux fichiers, dans le dossier du projet :
+
+| Fichier | Rôle |
+|---|---|
+| `Publier mes modifications.bat` | Le lanceur (double-clic) |
+| `Publier.ps1` | Le script qui exécute les commandes Git |
+
+> Le double-clic sur le `.bat` du dossier fonctionne aussi, l'icône du Bureau
+> n'est qu'un raccourci.
+
+Les sections suivantes expliquent ce que fait Git, si tu veux comprendre
+ou publier à la main.
+
 ## 📖 Vocabulaire rapide
 
 | Terme | Ce que ça veut dire |
