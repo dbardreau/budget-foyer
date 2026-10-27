@@ -1541,9 +1541,50 @@ function setFormType(type){
   cat.innerHTML = base.join('') + custom.join('');
   updateSubSelect();
 }
+/* Sous-catégories déjà utilisées dans les mois (données de base + saisies)
+   pour une catégorie (dépense) ou source (revenu) donnée.
+   · Dépense : les libellés des lignes (items[].nom) de la catégorie.
+   · Revenu  : les détails (detail) attachés à la source. */
+function existingSubLabels(mode, catId){
+  const out = [];
+  const seen = {};
+  const add = x => { const n=String(x||'').trim(); if(!n) return; const k=norm(n); if(!seen[k]){ seen[k]=1; out.push(n); } };
+  const ck = norm(catId);
+  const matchCat = c => {
+    const k = norm(c);
+    return k===ck || (k.length && ck.length && (ck.includes(k) || k.includes(ck)));
+  };
+  // Mois de base (toutes années)
+  Object.keys(baseData).forEach(y=>{
+    const arr = baseData[y];
+    if(!Array.isArray(arr)) return;
+    arr.forEach(m=>{
+      if(mode==='depense'){
+        (m.depenses||[]).forEach(c=>{ if(matchCat(c.categorie)) (c.items||[]).forEach(it=>add(it.nom)); });
+      } else {
+        (m.revenus||[]).forEach(r=>{ if(matchCat(r.nom)) add(r.detail); });
+      }
+    });
+  });
+  // Opérations saisies par l'utilisateur
+  Object.values(userOps).forEach(yearMap=>{
+    Object.values(yearMap||{}).forEach(arr=>{
+      (arr||[]).forEach(o=>{
+        if(o.type!==mode) return;
+        if(matchCat(o.cat)) add(o.sub);
+      });
+    });
+  });
+  return out;
+}
 function updateSubSelect(){
   const id = document.getElementById('fCat').value;
-  const subs = subsOf(id);
+  const type = document.querySelector('#addForm .seg.active[data-type]').dataset.type;
+  const subs = [];
+  const seen = {};
+  const add = s => { const k=norm(s); if(s && !seen[k]){ seen[k]=1; subs.push(String(s).trim()); } };
+  subsOf(id).forEach(add);                  // sous-catégories gérées manuellement
+  existingSubLabels(type, id).forEach(add); // sous-catégories déjà présentes dans les mois
   document.getElementById('fSub').innerHTML = '<option value="">—</option>' +
     subs.map(s=>`<option value="${e(s)}">${e(s)}</option>`).join('');
 }
