@@ -47,6 +47,7 @@
       <button id="nextYear" class="nav-arrow">›</button>
     </div>
     <span id="syncBadge" class="sync-badge" title="État du stockage de vos ajouts manuels"></span>
+    <button id="btnImport" class="btn" title="Importer mes relevés Boursorama (compte commun + Livret) en fin de mois">Importer relevés</button>
     <button id="btnAdd" class="btn primary">＋ Ajouter une opération</button>
     <button id="btnReset" class="btn ghost" title="Effacer vos ajouts personnels">Réinitialiser</button>
     <button id="btnLogout" class="btn ghost" title="Se déconnecter">Déconnexion</button>
@@ -139,12 +140,8 @@
 
     <div class="card">
       <h3>Dépenses par catégorie</h3>
+      <p class="muted" style="font-size:12px;margin-top:-6px">Cliquez sur une catégorie puis sur une sous-catégorie pour voir et modifier chaque opération.</p>
       <div id="expenseList" class="cat-list"></div>
-    </div>
-
-    <div class="card">
-      <h3>Vos ajouts manuels pour ce mois</h3>
-      <div id="userOps"></div>
     </div>
   </section>
 
@@ -302,6 +299,31 @@
         <button type="submit" class="btn primary">Enregistrer</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ============ MODALE IMPORT RELEVÉS BOURSORAMA ============ -->
+<div id="importModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Importer mes relevés Boursorama</h3>
+      <button id="importClose" class="btn ghost">✕</button>
+    </div>
+    <div class="field">
+      <label>Fichiers CSV (compte commun + Livret Bourso+)</label>
+      <input id="importFiles" type="file" accept=".csv,text/csv" multiple>
+      <div class="muted" style="font-size:11px;margin-top:6px">
+        Choisis tes exports « Opérations » Boursorama de fin de mois (séparés par « ; »).
+        Compte commun et Livret peuvent être dans un ou plusieurs fichiers.
+      </div>
+    </div>
+    <div id="importResults" class="import-results">
+      <div class="muted">Choisis ton/tes export(s) puis clique sur « Importer ».</div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" id="importCancel" class="btn ghost">Annuler</button>
+      <button type="button" id="importRun" class="btn primary">Importer</button>
+    </div>
   </div>
 </div>
 

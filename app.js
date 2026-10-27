@@ -25,6 +25,26 @@ let epargneData = {};
   }
 })();
 
+/* Données corrigées par l'import des relevés Boursorama (fin de mois).
+   importData      = { "2026": { "septembre": {mois, revenus, depenses, …} } }   (compte commun)
+   epargneImportData= { "2026": { "septembre": {mois, soldeDebut, soldeFin, operations} } } (livret)
+   Elles sont appliquées PAR-DESSUS data.js / data-epargne.js au chargement et
+   persistées dans Supabase (clés `import` et `epargne_import`). */
+let importData = {};
+let epargneImportData = {};
+
+/* Opérations individuelles du compte commun, issues de l'import Boursorama :
+   importOps = { "2026": { "septembre": [ {id, date, cat, sub, label, amount, type} ] } }.
+   Permet d'afficher et de modifier chaque dépense/revenu à l'unité dans
+   l'accordéon. Persisté dans Supabase sous la clé `import_ops`. */
+let importOps = {};
+let opSeq = 1;
+function newOpId(){
+  opSeq = (opSeq + 1) % 1000000;
+  return 'op' + Date.now().toString(36) + '-' + opSeq;
+}
+function uid(x){ return (x&&x.id)||x&&x._id; }
+
 /* Comptes gérés par l'application */
 const ACCOUNTS = [
   {key:'commun', label:'Compte commun', short:'Commun', color:'#4f9cf9'},
@@ -107,6 +127,8 @@ function cls(n){ return n<0 ? 'neg' : 'pos'; }
 /* ---------- État ---------- */
 const state = { tab:'overview', month:new Date().getMonth(), year:2026, account:'commun' };
 let editingKey = null; // {mk, id} quand on modifie une opération existante
+let editingSrc = 'user';  // 'user' | 'import' | 'livret' : origine de l'opération éditée
+let editingDate = '';     // date conservée lors d'une édition d'opération importée
 
 /* ============================================================
    STOCKAGE EN BASE DE DONNÉES SUPABASE (cloud)
@@ -211,6 +233,12 @@ async function initStorage(){
       newBase['2026'] = window.BUDGET2026;
     }
     baseData = newBase;
+
+    /* --- Données corrigées par import (commun + livret) --- */
+    importData        = (d && d.import && typeof d.import==='object') ? d.import : {};
+    epargneImportData = (d && d.epargne_import && typeof d.epargne_import==='object') ? d.epargne_import : {};
+    importOps         = (d && d.import_ops && typeof d.import_ops==='object') ? d.import_ops : {};
+    applyPersistedImports();
 
     // Re-sauvegarde au format normalisé (met à jour l'ancien format si besoin)
     sbSave('base', baseData).catch(()=>{});
@@ -666,19 +694,18 @@ function renderMonth(){
 
   // Revenus (accordéon + couleurs, comme les dépenses)
   if(acc==='livret'){
-    renderRevenueGroups(livretRevenueGroups(state.year, mk, false));
+    renderRevenueGroups(livretRevenueGroups(state.year, mk, false), mk);
   } else if(acc==='tous'){
     renderRevenueGroups(mergeRevenueGroups(
       commonRevenueGroups(state.year, mk),
       livretRevenueGroups(state.year, mk, true)
-    ));
+    ), mk);
   } else {
     renderRevenues(mk);
   }
 
-  // Dépenses par catégorie
-  renderExpenseMap(expenseMapFor(acc, mk));
-  renderUserOps(mk);
+  // Dépenses par catégorie → sous-catégorie → opérations individuelles
+  renderExpenseTree(buildExpenseSections(acc, mk), mk);
   renderForecast(mk, acc);
 }
 
@@ -721,12 +748,15 @@ function commonRevenueGroups(year, mk){
     map[k].total = Math.round((map[k].total+amt)*100)/100;
     map[k].items.push({detail:r.detail||'', amount:amt});
   });
-  w.revOps.forEach(o=>{
+  // Opérations manuelles de revenu (avec index réel de userOps pour l'édition)
+  opsOfYear(year, mk).forEach((o,i)=>{
+    if(o.type!=='revenu') return;
+    if((o.compte||'commun')==='livret') return;   // vies dans les groupes Livret
     const k = norm(o.cat);
     if(!map[k]) map[k] = {label:o.cat, items:[], total:0, user:[]};
-    map[k].total = addAmounts(map[k].total, o.amount);
     if(!map[k].user) map[k].user=[];
-    map[k].user.push({label:o.label, amount:o.amount});
+    map[k].total = addAmounts(map[k].total, o.amount);
+    map[k].user.push({label:o.label, amount:o.amount, i, compte:o.compte||'commun'});
   });
   return Object.values(map).sort((a,b)=>b.total-a.total);
 }
@@ -734,14 +764,26 @@ function commonRevenueGroups(year, mk){
 /* Revenus du Livret (relevés + saisies) groupés par catégorie */
 function livretRevenueGroups(year, mk, externalOnly){
   const map = {};
-  epargneOps(year, mk).forEach(o=>{
+  const m = epargneMonthOf(year, mk);
+  ((m&&m.operations)||[]).forEach(o=>{
     if(o.type!=='revenu') return;
     if(externalOnly && isInterne(o)) return;
     const k = norm(o.cat);
-    const amt = o.montant || o.amount || 0;
+    const amt = o.montant || 0;
     if(!map[k]) map[k] = {label:o.cat, items:[], total:0};
     map[k].total = addAmounts(map[k].total, amt);
     map[k].items.push({detail:[o.date,o.label].filter(Boolean).join(' · '), amount:amt});
+  });
+  // saisies manuelles de revenu sur le Livret (avec index réel pour l'édition)
+  opsOfYear(year, mk).forEach((o,i)=>{
+    if(o.type!=='revenu') return;
+    if((o.compte||'commun')!=='livret') return;
+    if(externalOnly && isInterne(o)) return;
+    const k = norm(o.cat);
+    if(!map[k]) map[k] = {label:o.cat, items:[], total:0, user:[]};
+    if(!map[k].user) map[k].user=[];
+    map[k].total = addAmounts(map[k].total, o.amount);
+    map[k].user.push({label:o.label, amount:o.amount, i, compte:'livret'});
   });
   return Object.values(map).sort((a,b)=>b.total-a.total);
 }
@@ -759,7 +801,7 @@ function mergeRevenueGroups(a, b){
   return Object.values(map).sort((x,y)=>y.total-x.total);
 }
 
-function renderRevenueGroups(groups){
+function renderRevenueGroups(groups, mk){
   const box = document.getElementById('revenueList');
   if(!groups.length){ box.innerHTML = '<div class="muted" style="font-size:13px">Aucun revenu ce mois-ci.</div>'; return; }
   box.innerHTML = groups.map(c=>{
@@ -767,7 +809,14 @@ function renderRevenueGroups(groups){
     const items = (c.items||[]).map(r=>`
       <div class="row"><span class="muted">${e(r.detail)||'—'}</span><span class="money" style="color:${col}">${fmt(r.amount)} €</span></div>`).join('');
     const user = (c.user||[]).map(u=>`
-      <div class="row" style="color:var(--accent)"><span>${e(u.label)||'Ajout manuel'}</span><span class="money">+${fmt(u.amount)} €</span></div>`).join('');
+      <div class="row" style="color:var(--accent)">
+        <span>${e(u.label)||'Ajout manuel'}</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="money">+${fmt(u.amount)} €</span>
+          <button class="btn ghost small" data-ru="${u.i}" style="color:var(--accent)">Modifier</button>
+          <button class="btn ghost small" data-rd="${u.i}" style="color:var(--accent)">Suppr.</button>
+        </div>
+      </div>`).join('');
     return `<div class="cat">
       <div class="head" onclick="this.parentElement.classList.toggle('open')">
         <span class="cname" style="color:${col}">● ${e(c.label)}</span>
@@ -776,6 +825,10 @@ function renderRevenueGroups(groups){
       <div class="body">${items}${user}</div>
     </div>`;
   }).join('');
+  box.querySelectorAll('[data-ru]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); openRefEdit({kind:'user', i:+b.dataset.ru}, mk); });
+  box.querySelectorAll('[data-rd]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation();
+    if(confirm('Supprimer ce revenu ?')){ removeRefOp({kind:'user', i:+b.dataset.rd}, mk); }
+  });
 }
 
 /* Cartographie des dépenses selon le compte affiché */
@@ -938,59 +991,157 @@ function renderForecast(mk, acc){
 
 
 /* Revenus du mois du compte commun */
-function renderRevenues(mk){ renderRevenueGroups(commonRevenueGroups(state.year, mk)); }
+function renderRevenues(mk){ renderRevenueGroups(commonRevenueGroups(state.year, mk), mk); }
 
-function renderExpenseMap(map){
+/* ============ DÉPENSES : catégorie → sous-catégorie → opérations ============
+   Construit l'arbre des dépenses du mois affiché, selon le compte choisi.
+   Chaque opération individuelle (import Boursorama, saisie manuelle, relevé
+   Livret, ou totaux de référence quand l'import individuel n'existe pas) est
+   listée dans sa sous-catégorie avec ses boutons Modifier / Suppr. */
+function buildExpenseSections(acc, mk){
+  const year = state.year;
+  const accNorm = norm(acc);
+  const sections = [];
+  const secIdx = {};
+  function secOf(cat){
+    const k = norm(cat);
+    if(!secIdx[k]){ const s={cat, color:catMeta(cat).color, total:0, subs:{}, subsList:[]}; secIdx[k]=s; sections.push(s); }
+    return secIdx[k];
+  }
+  function put(cat, sub, amount, row){
+    const s = secOf(cat);
+    const sk = norm(sub||'');
+    if(!s.subs[sk]){ const su={sub:sub||'', total:0, rows:[], agg:false}; s.subs[sk]=su; s.subsList.push(su); }
+    const su = s.subs[sk];
+    su.rows.push(row);
+    if(row.agg) su.agg = true;
+    su.total = addAmounts(su.total, amount);
+    s.total   = addAmounts(s.total, amount);
+  }
+
+  /* --- Partie compte commun --- */
+  if(accNorm!=='livret'){
+    const hasIndv = Array.isArray(importOps[year] && importOps[year][mk]) && importOps[year][mk].length;
+    if(hasIndv){
+      (importOps[year][mk]||[]).forEach(o=>{
+        if(o.type!=='depense') return;
+        if(accNorm==='tous' && isEpargneCatKey(norm(o.cat))) return;
+        put(o.cat||'Autre', o.sub||'Opérations', o.amount,
+          {label:o.label, date:o.date, amount:o.amount, compte:'commun', ref:{kind:'import', id:o.id}});
+      });
+    } else {
+      const baseMonth = monthByKeyFor(year, mk);
+      (baseMonth.depenses||[]).forEach(c=>{
+        if(accNorm==='tous' && isEpargneCatKey(norm(c.categorie))) return;
+        (c.items||[]).forEach(it=>{
+          put(c.categorie, it.nom, parseAmount(it.montant),
+            {label:it.nom, date:'', amount:parseAmount(it.montant), compte:'commun', agg:true});
+        });
+      });
+    }
+    // saisies manuelles du commun (index réels de userOps pour l'édition)
+    opsOfYear(year, mk).forEach((o,i)=>{
+      if(o.type!=='depense') return;
+      if(accNorm==='tous' && isEpargneCatKey(norm(o.cat))) return;
+      put(o.cat||'Autre', o.sub||'Opérations', o.amount,
+        {label:o.label, date:o.date||'', amount:o.amount, compte:'commun', ref:{kind:'user', i}});
+    });
+  }
+
+  /* --- Partie Livret --- */
+  if(accNorm!=='commun'){
+    const lm = epargneMonthOf(year, mk);
+    ((lm&&lm.operations)||[]).forEach((o,idx)=>{
+      if(o.type!=='depense') return;
+      if(accNorm==='tous' && isInterne(o)) return;
+      put(o.cat||'Autre', 'Opérations', o.montant||0,
+        {label:o.label, date:o.date||'', amount:o.montant||0, compte:'livret', ref:{kind:'livret', idx}});
+    });
+    opsOfYear(year, mk).forEach((o,i)=>{
+      if(o.type!=='depense') return;
+      if((o.compte||'commun')!=='livret') return;
+      if(accNorm==='tous' && isInterne(o)) return;
+      put(o.cat||'Autre', 'Opérations', o.amount,
+        {label:o.label, date:o.date||'', amount:o.amount, compte:'livret', ref:{kind:'user', i}});
+    });
+  }
+  return sections;
+}
+
+/* Rend l'accordéon à 2 niveaux : catégorie → sous-catégorie → opérations. */
+function renderExpenseTree(sections, mk){
   const box = document.getElementById('expenseList');
-  const sorted = Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
-  if(!sorted.length){ box.innerHTML = '<div class="muted" style="font-size:13px">Aucune dépense ce mois-ci.</div>'; return; }
-  box.innerHTML = sorted.map(([k,c])=>{
-    const m = catMeta(c.label);
-    const items = (c.items||[]).map(it=>`
-      <div class="row"><span class="muted">${e((it.nom||'').trim())||'—'}</span><span class="money seg-amount">${(it.montant||'').replace(/€/g,'').trim()||'0,00'}</span></div>`).join('');
-    const user = (c.userOps||[]).map(u=>`
-      <div class="row" style="color:var(--accent)"><span>${e(u.label)||'Ajout manuel'}</span><span class="money">+${fmt(u.amount)} €</span></div>`).join('');
+  if(!sections.length){ box.innerHTML = '<div class="muted" style="font-size:13px">Aucune dépense ce mois-ci.</div>'; return; }
+  sections.sort((a,b)=>b.total-a.total);
+  box.innerHTML = sections.map(s=>{
+    s.subsList.sort((a,b)=>b.total-a.total);
+    const subsHtml = s.subsList.map(su=>{
+      const rowsHtml = su.rows.map(r=>{
+        const actions = (!r.agg && r.ref)
+          ? `<button class="btn ghost small" data-act="e" data-ref='${JSON.stringify(r.ref)}'>Modifier</button>
+             <button class="btn ghost small" data-act="d" data-ref='${JSON.stringify(r.ref)}'>Suppr.</button>`
+          : '';
+        const tag = r.compte==='livret' ? `<span class="account-tag livret">Livret</span>` : '';
+        return `<div class="row op-row">
+          <span class="sub-op-label">${r.date?`<span class="muted op-date">${e(r.date)}</span>· `:''}${e(r.label)||'—'}</span>
+          <div style="display:flex;gap:8px;align-items:center">${tag}
+            <span class="money" style="color:var(--danger)">${ngfmt(r.amount)}</span>${actions}
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="cat subcat">
+        <div class="head subhead" onclick="this.parentElement.classList.toggle('open')">
+          <span class="cname" style="font-size:13px">${e(su.sub)||'Opérations'}</span>
+          <span class="ctotal" style="font-size:14px">${cmoney(su.total)}</span>
+        </div>
+        <div class="body">${rowsHtml || '<div class="muted" style="font-size:12px">Aucune opération.</div>'}</div>
+      </div>`;
+    }).join('');
     return `<div class="cat">
       <div class="head" onclick="this.parentElement.classList.toggle('open')">
-        <span class="cname" style="color:${m.color}">● ${m.label}</span>
-        <span class="ctotal">${cmoney(c.total)}</span>
+        <span class="cname" style="color:${s.color}">● ${e(s.cat)}</span>
+        <span class="ctotal">${cmoney(s.total)}</span>
       </div>
-      <div class="body">${items}${user}</div>
+      <div class="body">${subsHtml}</div>
     </div>`;
   }).join('');
-}
-function renderExpenses(mk){ renderExpenseMap(catTotalsMk(mk)); }
-
-function renderUserOps(mk){
-  const arr = opsOf(mk);
-  const acc = state.account || 'commun';
-  const list = arr.map((o,i)=>({o,i})).filter(({o}) => acc==='tous' || (o.compte||'commun')===acc);
-  const box = document.getElementById('userOps');
-  if(!list.length){ box.innerHTML = '<div class="muted" style="font-size:13px">Aucune opération ajoutée.</div>'; return; }
-  box.innerHTML = `<div class="list">` + list.map(({o,i})=>{
-    const isRev = o.type==='revenu';
-    const ck = o.compte || 'commun';
-    const tag = acc==='tous' ? `<span class="account-tag ${ck==='livret'?'livret':''}">${ck==='livret'?'Livret':'Commun'}</span>` : '';
-    return `<div class="row">
-      <div class="nam"><span class="bar-label">${e(o.cat)} <span class="tag ${isRev?'ok':'over'}" style="font-size:10px">${isRev?'+':'− '}</span>${tag}</span><span class="lbl">${e((o.sub?o.label+' · '+o.sub:(o.label))||'')}</span></div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <span class="money" style="color:${isRev?'var(--accent2)':'var(--danger)'}">${isRev?'+':''}${fmt(o.amount)} €</span>
-        <button class="btn ghost small" data-edit="${i}">Modifier</button>
-        <button class="btn ghost small" data-del="${i}">Suppr.</button>
-      </div>
-    </div>`;
-  }).join('') + `</div>`;
-  box.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(mk, +b.dataset.edit));
-  box.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
-    const i = +b.dataset.del;
-    if(confirm('Supprimer cette opération ?')){
-      const a = oy(state.year)[mk];
-      a.splice(i,1);
-      if(!a.length) delete oy(state.year)[mk];
-      saveOps(); renderMonth();
-    }
+  box.querySelectorAll('[data-act]').forEach(b=>{
+    const ref = JSON.parse(b.dataset.ref);
+    b.onclick = (ev)=>{ ev.stopPropagation();
+      if(b.dataset.act==='e') openRefEdit(ref, mk); else removeRefOp(ref, mk);
+    };
   });
 }
+function ngfmt(n){ return (n<0? '−':'− ') + fmt(Math.abs(n)) + ' €'; }
+
+/* Ouvre la modale d'édition selon l'origine de l'opération. */
+function openRefEdit(ref, mk){
+  if(ref.kind==='user') openEdit(mk, ref.i);
+  else if(ref.kind==='import') openEditImport(mk, ref.id);
+  else if(ref.kind==='livret') openEditLivret(mk, ref.idx);
+}
+/* Supprime une opération (selon son origine) et met à jour les données. */
+function removeRefOp(ref, mk){
+  const year = state.year;
+  if(!confirm('Supprimer cette opération ?\nLes totaux et soldes seront recalculés.')) return;
+  if(ref.kind==='user'){
+    const a = oy(year)[mk];
+    if(a){ a.splice(ref.i,1); if(!a.length) delete oy(year)[mk]; }
+    saveOps();
+  } else if(ref.kind==='import'){
+    const arr = (importOps[year]||{})[mk]||[];
+    const j = arr.findIndex(x=>x.id===ref.id);
+    if(j>=0) arr.splice(j,1);
+    saveImportMonthFromOps(year, mk);
+  } else if(ref.kind==='livret'){
+    const mi = MONTHS.indexOf(mk);
+    const m = epargneData[String(year)] && epargneData[String(year)][mi];
+    if(m && m.operations) m.operations.splice(ref.idx,1);
+    recomputeLivretSoldes(year, mi);
+  }
+  renderMonth();
+}
+function renderExpenses(mk){ renderExpenseTree(buildExpenseSections(state.account||'commun', mk), mk); }
 
 /* ============ BUDGET ============
    La page Budget est calculée AUTOMATIQUEMENT à partir de vos dépenses
@@ -1499,8 +1650,11 @@ function renderHeat(list){
 /* ============ Ajout d'opération ============ */
 function openModal(){
   editingKey = null;
+  editingSrc = 'user';
+  editingDate = '';
   document.getElementById('modalTitle').textContent = 'Ajouter une opération';
   document.getElementById('addForm').reset();
+  const fm = document.getElementById('fMois'); fm.disabled = false;
   const sel = document.getElementById('fMois');
   sel.innerHTML = MONTHS.map((mk,i)=>`<option value="${i}">${MONTHS_FR[i]} ${state.year}</option>`).join('');
   sel.value = state.month;
@@ -1512,8 +1666,11 @@ function openEdit(mk, i){
   const op = oy(state.year)[mk][i];
   if(!op) return;
   editingKey = {mk, year: state.year, i};
+  editingSrc = 'user';
+  editingDate = '';
   document.getElementById('modalTitle').textContent = 'Modifier l\u2019opération';
   document.getElementById('addForm').reset();
+  const fm = document.getElementById('fMois'); fm.disabled = false;
   const sel = document.getElementById('fMois');
   sel.innerHTML = MONTHS.map((m,idx)=>`<option value="${idx}">${MONTHS_FR[idx]} ${state.year}</option>`).join('');
   sel.value = MONTHS.indexOf(mk);
@@ -1526,6 +1683,57 @@ function openEdit(mk, i){
   const lbl = (op.label && op.label!==op.sub) ? op.label : '';
   document.getElementById('fLabel').value = lbl||'';
   document.getElementById('fAmount').value = op.amount;
+  document.getElementById('modal').classList.remove('hidden');
+}
+/* Remplit la modale pour éditer une opération du compte commun issue d'un import */
+function openEditImport(mk, id){
+  const year = state.year;
+  const arr = (importOps[year]||{})[mk]||[];
+  const op = arr.find(x=>x.id===id);
+  if(!op) return;
+  editingKey = {mk, year, id};
+  editingSrc = 'import';
+  editingDate = op.date||'';
+  document.getElementById('modalTitle').textContent = 'Modifier l\u2019opération (import)';
+  document.getElementById('addForm').reset();
+  const fm = document.getElementById('fMois'); fm.disabled = true;
+  const sel = document.getElementById('fMois');
+  sel.innerHTML = MONTHS.map((m,idx)=>`<option value="${idx}">${MONTHS_FR[idx]} ${state.year}</option>`).join('');
+  sel.value = MONTHS.indexOf(mk);
+  setFormAccount('commun');
+  setFormType(op.type);
+  const fcat = document.getElementById('fCat');
+  if([...fcat.options].some(o=>o.value===op.cat)) fcat.value = op.cat; else fcat.value='';
+  updateSubSelect();
+  if(op.sub) document.getElementById('fSub').value = op.sub;
+  const lbl = (op.label && op.label!==op.sub) ? op.label : '';
+  document.getElementById('fLabel').value = lbl||'';
+  document.getElementById('fAmount').value = op.amount;
+  document.getElementById('modal').classList.remove('hidden');
+}
+/* Remplit la modale pour éditer une opération du relevé Livret */
+function openEditLivret(mk, idx){
+  const mi = MONTHS.indexOf(mk);
+  const m = epargneData[String(state.year)] && epargneData[String(state.year)][mi];
+  const op = m && m.operations ? m.operations[idx] : null;
+  if(!op) return;
+  editingKey = {mk, year: state.year, idx};
+  editingSrc = 'livret';
+  editingDate = '';
+  document.getElementById('modalTitle').textContent = 'Modifier l\u2019opération (Livret)';
+  document.getElementById('addForm').reset();
+  const fm = document.getElementById('fMois'); fm.disabled = true;
+  const sel = document.getElementById('fMois');
+  sel.innerHTML = MONTHS.map((m2,idx2)=>`<option value="${idx2}">${MONTHS_FR[idx2]} ${state.year}</option>`).join('');
+  sel.value = mi;
+  setFormAccount('livret');
+  setFormType(op.type);
+  const fcat = document.getElementById('fCat');
+  if([...fcat.options].some(o=>o.value===op.cat)) fcat.value = op.cat; else fcat.value='';
+  updateSubSelect();
+  const lbl = (op.label && op.label!==op.cat) ? op.label : '';
+  document.getElementById('fLabel').value = lbl||'';
+  document.getElementById('fAmount').value = op.montant;
   document.getElementById('modal').classList.remove('hidden');
 }
 function setFormAccount(acc){
@@ -2002,6 +2210,352 @@ function commitSub(inp){
   renderCatManager();
 }
 
+/* ---------- Import des relevés Boursorama (compte commun + Livret) ---------- */
+
+/* Applique les données corrigées par import PAR-DESSUS data.js / data-epargne.js.
+   Appelée au chargement (initStorage) et après un import. */
+function applyPersistedImports(){
+  for(const y in importData){
+    for(const mk in importData[y]){
+      const mi = MONTHS.indexOf(mk); if(mi<0) continue;
+      if(!baseData[y]) baseData[y] = MONTHS.map(emptyMonth);
+      baseData[y][mi] = importData[y][mk];
+    }
+  }
+  for(const y in epargneImportData){
+    for(const mk in epargneImportData[y]){
+      const mi = MONTHS.indexOf(mk); if(mi<0) continue;
+      if(!epargneData[y]) epargneData[y] = MONTHS.map(emptyEpargneMonth);
+      epargneData[y][mi] = epargneImportData[y][mk];
+    }
+  }
+}
+
+/* --- Lecture d'un fichier CSV Boursorama --- */
+function importDelimiter(text){
+  const first = text.split(/\r?\n/).find(l=>l.trim().length>0) || '';
+  const c = {';':0,',':0,'\t':0};
+  for(const ch of first){ if(ch in c) c[ch]++; }
+  let best=';', bm=0;
+  for(const k in c){ if(c[k]>bm){ bm=c[k]; best=k; } }
+  return bm>0 ? best : ';';
+}
+function importSplitLine(line, delim){
+  const out=[]; let cur='', q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){ if(q && line[i+1]==='"'){ cur+='"'; i++; } else q=!q; }
+    else if(ch===delim && !q){ out.push(cur); cur=''; }
+    else cur+=ch;
+  }
+  out.push(cur); return out;
+}
+function importBankDate(s){
+  if(s==null) return null;
+  const t = String(s).replace(/"/g,'').trim();
+  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return { year:+m[1], month:+m[2] };
+  m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return { year:+m[3], month:+m[2] };
+  return null;
+}
+function importAccount(label){
+  const k = norm(label);
+  return /livret|bourso|epargne/.test(k) ? 'livret' : 'commun';
+}
+function importInterne(parent){ return /mouvements internes|virement/.test(norm(parent)); }
+
+/* Analyse un fichier CSV et renvoie une liste d'opérations :
+   { year, month (1-12), date, libelle, sous, parent, amount, balance, compte } */
+function importParseFile(text){
+  text = text.replace(/^\uFEFF/,'');
+  const delim = importDelimiter(text);
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(lines.length < 2) return [];
+  const header = importSplitLine(lines[0], delim).map(norm);
+  const iDate = header.findIndex(h=>h.indexOf('date')===0 && h.indexOf('oper')>=0);
+  if(iDate<0) return [];
+  const iCat = header.findIndex(h=>h==='categorie');
+  const iPar = header.findIndex(h=>h==='categorie parente');
+  const iLib = header.findIndex(h=>h==='libelle' || h==='libelle suggere');
+  const iCompte = header.findIndex(h=>h==='libelle compte');
+  // deux colonnes « Solde » : le montant de l'opération (1re) et le solde du compte (dernière)
+  const soldeIdx = [];
+  header.forEach((h,i)=>{ if(h==='solde') soldeIdx.push(i); });
+  const iAmount = soldeIdx.length ? soldeIdx[0] : -1;
+  const iBalance = soldeIdx.length>1 ? soldeIdx[soldeIdx.length-1] : -1;
+  if(iAmount<0) return [];
+  const ops = [];
+  for(let l=1; l<lines.length; l++){
+    const c = importSplitLine(lines[l], delim);
+    if(c.length < 7) continue;
+    const d = importBankDate(c[iDate]);
+    if(!d) continue;
+    ops.push({
+      year:d.year, month:d.month,
+      date: String(c[iDate]).replace(/"/g,'').trim(),
+      libelle: (iLib>=0 ? c[iLib] : '').trim(),
+      sous:    (iCat>=0 ? c[iCat] : '').trim(),
+      parent:  (iPar>=0 ? c[iPar] : '').trim(),
+      amount:  parseAmount(c[iAmount]),
+      balance: iBalance>=0 ? parseAmount(c[iBalance]) : null,
+      compte:  importAccount(iCompte>=0 ? c[iCompte] : ''),
+    });
+  }
+  return ops;
+}
+
+/* Reconstruit les mois (compte commun + livret) à partir des opérations.
+   Renvoie { communs, livrets } : { année : { indexMois : {mois,…} } } */
+function rebuildImportedMonths(ops){
+  const communs = {}, livrets = {}, cmd = {}, lmd = {};
+  for(const o of ops){
+    const y = String(o.year), mi = o.month-1;
+    if(mi<0 || mi>11) continue;
+    if(o.compte==='livret'){ (lmd[y]=lmd[y]||{})[mi]=(lmd[y]||{})[mi]||[]; lmd[y][mi].push(o); }
+    else                   { (cmd[y]=cmd[y]||{})[mi]=(cmd[y]||{})[mi]||[]; cmd[y][mi].push(o); }
+  }
+  const catRank = {};
+  (CATS&&CATS.map?CATS.map(c=>c.key):[]).forEach((x,i)=>catRank[norm(x)]=i);
+  // --- compte commun ---
+  for(const y in cmd){
+    for(const mi in cmd[y]){
+      const opsM = cmd[y][mi];
+      const dep={}, rev={}, order=[];
+      for(const o of opsM){
+        if(o.amount < 0){
+          const P = o.parent||'Autre', k = norm(P);
+          if(!dep[k]){ dep[k]={label:P, items:{}, total:0}; order.push(k); }
+          const it = o.sous||'Autre';
+          dep[k].total = addAmounts(dep[k].total, -o.amount);
+          dep[k].items[it] = addAmounts(dep[k].items[it]||0, -o.amount);
+        } else {
+          const P = o.parent||'Autre revenu', k = norm(P);
+          if(!rev[k]) rev[k] = {label:P, total:0};
+          rev[k].total = addAmounts(rev[k].total, o.amount);
+        }
+      }
+      order.sort((a,b)=> (catRank[a]==null?999:catRank[a]) - (catRank[b]==null?999:catRank[b]));
+      const depenses = order.map(k=>{
+        const d = dep[k];
+        const items = Object.keys(d.items)
+          .map(sub=>({ nom:sub, montant:cmoney(d.items[sub]) }))
+          .sort((a,b)=> parseAmount(b.montant)-parseAmount(a.montant));
+        return { categorie:d.label, total:cmoney(d.total), items };
+      });
+      const revenus = Object.keys(rev)
+        .map(k=>({ nom:rev[k].label, detail:'', montant:cmoney(rev[k].total) }))
+        .sort((a,b)=> parseAmount(b.montant)-parseAmount(a.montant));
+      let depTot=0, revTot=0;
+      depenses.forEach(c=>depTot=addAmounts(depTot, parseAmount(c.total)));
+      revenus.forEach(r=>revTot=addAmounts(revTot, parseAmount(r.montant)));
+      (communs[y]=communs[y]||{})[mi] = {
+        mois:MONTHS[mi],
+        revenuTotalFoyer:cmoney(revTot),
+        sommeRestante:cmoney(revTot-depTot),
+        depenseTotalCommune:cmoney(depTot),
+        depenses, revenus
+      };
+    }
+  }
+  // --- livret ---
+  for(const y in lmd){
+    const info = {};
+    for(const mi in lmd[y]){
+      const opsM = lmd[y][mi];
+      let bal=null, balDate='';
+      const operations = opsM.map(o=>{
+        const parent = o.parent||'Autre';
+        if(o.balance!=null && String(o.date)>=balDate){ bal=o.balance; balDate=String(o.date); }
+        const op = { date:o.date, label:o.libelle||o.sous, type:o.amount>0?'revenu':'depense', cat:parent, montant:Math.abs(o.amount) };
+        if(importInterne(parent)) op.interne = true;
+        return op;
+      });
+      info[mi] = { bal, operations };
+    }
+    const idxs = Object.keys(info).map(Number).sort((a,b)=>a-b);
+    for(let i=0;i<idxs.length;i++){
+      const mi = idxs[i], cur = info[mi];
+      const prevFin = (i>0 && info[idxs[i-1]].bal!=null) ? info[idxs[i-1]].bal : null;
+      (livrets[y]=livrets[y]||{})[mi] = {
+        mois:MONTHS[mi],
+        soldeDebut: prevFin,
+        soldeFin: cur.bal,
+        operations: cur.operations,
+      };
+    }
+  }
+  return { communs, livrets };
+}
+
+/* Reconstruit le mois agrégé du compte commun (format baseData) à partir des
+   opérations individuelles importées (importOps). Utilisé après l'édition ou la
+   suppression d'une opération importée pour que totaux et soldes restent cohérents. */
+function rebuildImportMonthFromOps(y, mk){
+  const ops = (importOps[y]||{})[mk] || [];
+  const dep={}, rev={}, order=[];
+  const catRank = {};
+  (CATS||[]).forEach((c,i)=>{ catRank[norm(c.key)] = i; });
+  for(const o of ops){
+    if(o.type==='depense'){
+      const P = o.cat||'Autre', k = norm(P);
+      if(!dep[k]){ dep[k]={label:P, items:{}, total:0}; order.push(k); }
+      const it = o.sub||'Autre';
+      dep[k].total = addAmounts(dep[k].total, o.amount);
+      dep[k].items[it] = addAmounts(dep[k].items[it]||0, o.amount);
+    } else {
+      const P = o.cat||'Autre revenu', k = norm(P);
+      if(!rev[k]) rev[k] = {label:P, total:0};
+      rev[k].total = addAmounts(rev[k].total, o.amount);
+    }
+  }
+  order.sort((a,b)=>(catRank[a]==null?999:catRank[a]) - (catRank[b]==null?999:catRank[b]));
+  const depenses = order.map(k=>{
+    const d = dep[k];
+    return { categorie:d.label, total:cmoney(d.total),
+             items:Object.keys(d.items)
+               .map(sub=>({ nom:sub, montant:cmoney(d.items[sub]) }))
+               .sort((a,b)=>parseAmount(b.montant)-parseAmount(a.montant)) };
+  });
+  const revenus = Object.keys(rev)
+    .map(k=>({ nom:rev[k].label, detail:'', montant:cmoney(rev[k].total) }))
+    .sort((a,b)=>parseAmount(b.montant)-parseAmount(a.montant));
+  let depTot=0, revTot=0;
+  depenses.forEach(c=>depTot=addAmounts(depTot, parseAmount(c.total)));
+  revenus.forEach(r=>revTot=addAmounts(revTot, parseAmount(r.montant)));
+  return { mois:mk, revenuTotalFoyer:cmoney(revTot), sommeRestante:cmoney(revTot-depTot),
+           depenseTotalCommune:cmoney(depTot), depenses, revenus };
+}
+/* Recalcule et persiste le mois importé du commun après une édition/suppression. */
+function saveImportMonthFromOps(y, mk){
+  if(!importData[y]) importData[y]={};
+  // on ne garde que les mois qui ont encore des opérations individuelles
+  if((importOps[y]||{})[mk] && (importOps[y])[mk].length){
+    importData[y][mk] = rebuildImportMonthFromOps(y, mk);
+  } else {
+    delete importData[y][mk];
+    if(importOps[y]) delete importOps[y][mk];
+  }
+  applyPersistedImports();
+  saveKey('import', importData);
+  saveKey('import_ops', importOps);
+}
+/* Recalcule le solde du Livret du mois édité après modification/suppression d'une
+   opération, afin que soldeDebut/soldeFin restent cohérents avec les mouvements.
+   Les mois suivants conservent leurs soldes (relevé bancaire ou chaînage affiché). */
+function recomputeLivretSoldes(year, mi){
+  const y = String(year);
+  const arr = epargneData[y];
+  if(!arr || !arr[mi]) return;
+  const m = arr[mi];
+  const prev = mi>0 ? arr[mi-1] : null;
+  const debut = (prev && prev.soldeFin!=null) ? prev.soldeFin : (m.soldeDebut!=null?m.soldeDebut:null);
+  m.soldeDebut = debut;
+  const net = (m.operations||[]).reduce((s,o)=>s+(o.type==='revenu'?o.montant:-o.montant),0);
+  m.soldeFin = (debut!=null) ? addAmounts(debut, net) : null;
+  saveEpargne();
+}
+/* Persiste les relevés du Livret (epargne_import) après modification. */
+function saveEpargne(){
+  for(const y in epargneData){
+    if(!Array.isArray(epargneData[y])) continue;
+    if(!epargneImportData[y]) epargneImportData[y]={};
+    epargneData[y].forEach((m,i)=>{ if(m) epargneImportData[y][MONTHS[i]] = m; });
+  }
+  saveKey('epargne_import', epargneImportData);
+}
+
+/* Traite les fichiers choisis : analyse, reconstruction, mise à jour et sauvegarde. */
+function processImportFiles(fileList){
+  const files = Array.prototype.slice.call(fileList||[]);
+  if(!files.length){ showToast('Aucun fichier sélectionné.','err'); return; }
+  const results = document.getElementById('importResults');
+  if(results) results.innerHTML = '<div class="muted">Lecture des fichiers…</div>';
+  const readAll = files.map(f=> new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = ()=> res({ name:f.name, text:String(r.result||'') });
+    r.onerror = ()=> rej(new Error('Impossible de lire '+f.name));
+    r.readAsText(f, 'UTF-8');
+  }));
+  Promise.all(readAll).then(sources=>{
+    let ops = [];
+    const perFile = [];
+    for(const s of sources){
+      const fops = importParseFile(s.text);
+      perFile.push({ name:s.name, count:fops.length });
+      ops = ops.concat(fops);
+    }
+    const { communs, livrets } = rebuildImportedMonths(ops);
+    // Opérations individuelles du compte commun (pour l'accordéon détaillé)
+    const io = {};
+    ops.forEach(o=>{
+      if(o.compte!=='commun') return;
+      const mi = o.month-1; if(mi<0||mi>11) return;
+      const y = String(o.year);
+      (io[y]=io[y]||{})[mi]=(io[y]||{})[mi]||[];
+      io[y][mi].push({
+        id:newOpId(), date:o.date,
+        cat:o.parent||'Autre', sub:o.sous||'',
+        label:o.libelle||o.sous||'',
+        amount:Math.abs(o.amount),
+        type:o.amount>=0?'revenu':'depense',
+      });
+    });
+    for(const y in io) for(const mi in io[y]){ (importOps[y]=importOps[y]||{})[MONTHS[mi]] = io[y][mi]; }
+    for(const y in communs) for(const mi in communs[y]){ (importData[y]=importData[y]||{})[communs[y][mi].mois] = communs[y][mi]; }
+    for(const y in livrets) for(const mi in livrets[y]){ (epargneImportData[y]=epargneImportData[y]||{})[livrets[y][mi].mois] = livrets[y][mi]; }
+    applyPersistedImports();
+    saveKey('import', importData);
+    saveKey('epargne_import', epargneImportData);
+    saveKey('import_ops', importOps);
+    renderImportResults(perFile, communs, livrets);
+    switchTab(state.tab);
+    showToast('Import terminé ✔ (' + ops.length + ' opérations)');
+  }).catch(err=>{
+    if(results) results.innerHTML = '<div class="neg">Erreur : ' + e(err && err.message ? err.message : 'fichier illisible') + '</div>';
+  });
+}
+
+function renderImportResults(perFile, communs, livrets){
+  const box = document.getElementById('importResults');
+  if(!box) return;
+  const files = perFile.map(f=>`<div>· ${e(f.name)} — ${f.count} opérations</div>`).join('');
+  let communsStr = '', livretsStr = '';
+  for(const y in communs){
+    const list = Object.keys(communs[y]).map(Number).sort((a,b)=>a-b).map(mi=>{
+      const m = communs[y][mi];
+      return `<div class="row"><span>${e(m.mois)}</span><span class="money pos">${e(m.revenuTotalFoyer)}</span><span class="muted">·</span><span class="money neg">${e(m.depenseTotalCommune)}</span></div>`;
+    }).join('');
+    communsStr += `<li><b>Compte commun ${y}</b>${list}</li>`;
+  }
+  for(const y in livrets){
+    const list = Object.keys(livrets[y]).map(Number).sort((a,b)=>a-b).map(mi=>{
+      const m = livrets[y][mi];
+      const opsN = m.operations.length;
+      return `<div class="row"><span>${e(m.mois)}</span><span class="muted">${opsN} opération(s)</span>${m.soldeFin!=null?`<span class="money">solde ${e(cmoney(m.soldeFin))}</span>`:''}</div>`;
+    }).join('');
+    livretsStr += `<li><b>Livret Bourso+ ${y}</b>${list}</li>`;
+  }
+  box.innerHTML =
+    (files?`<div class="import-files">Fichiers lus :</div>${files}`:'') +
+    (communsStr?`<div class="import-grp"><b>Compte commun — mois reconstruits</b>${communsStr}</div>`:'<div class="muted">Aucune dépense de compte commun détectée.</div>') +
+    (livretsStr?`<div class="import-grp"><b>Livret Bourso+ — mois reconstruits</b>${livretsStr}</div>`:'<div class="muted">Aucune ligne de Livret Bourso+ détectée (exporte ton Livret séparément si besoin).</div>') +
+    `<div class="muted" style="font-size:12px;margin-top:10px">Tes ajouts manuels restent intacts (ils s'ajoutent par-dessus).</div>`;
+}
+function openImportModal(){
+  const m = document.getElementById('importModal');
+  const fi = document.getElementById('importFiles');
+  const box = document.getElementById('importResults');
+  if(fi) fi.value='';
+  if(box) box.innerHTML = '<div class="muted">Choisis ton/tes export(s) Boursorama puis clique sur « Importer ».</div>';
+  if(m) m.classList.remove('hidden');
+}
+function closeImportModal(){ const m=document.getElementById('importModal'); if(m) m.classList.add('hidden'); }
+function runImportNow(){
+  const fi = document.getElementById('importFiles');
+  processImportFiles(fi && fi.files);
+}
+
 /* ---------- helpers html ---------- */
 function e(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -2019,6 +2573,10 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   document.getElementById('prevYear').onclick=()=>changeYear(-1);
   document.getElementById('nextYear').onclick=()=>changeYear(1);
   document.getElementById('btnAdd').onclick=openModal;
+  document.getElementById('btnImport').onclick=openImportModal;
+  document.getElementById('importClose').onclick=closeImportModal;
+  document.getElementById('importCancel').onclick=closeImportModal;
+  document.getElementById('importRun').onclick=runImportNow;
   document.getElementById('modalClose').onclick=()=>document.getElementById('modal').classList.add('hidden');
   document.getElementById('formCancel').onclick=()=>document.getElementById('modal').classList.add('hidden');
   document.querySelectorAll('#addForm .seg[data-type]').forEach(b=>b.onclick=()=>setFormType(b.dataset.type));
@@ -2069,12 +2627,29 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     const amount = parseFloat(document.getElementById('fAmount').value);
     if(!amount||amount<=0){ showToast('Montant invalide.','err'); return; }
     const payload = {type, cat, sub, label:label||sub||(type==='depense'?'Dépense':'Revenu'), amount:Math.round(amount*100)/100, compte};
-    if(editingKey){
-      const {mk:emk, year:ey, i:ei} = editingKey;
+    const emk = (editingKey && editingKey.mk) || mk;   // mois d'origine (édition) ou cible (ajout)
+    if(editingSrc==='import' && editingKey){
+      const ey = editingKey.year;
+      const arr = (importOps[ey]||{})[emk]||[];
+      const op = arr.find(x=>x.id===editingKey.id);
+      if(op){ op.type=payload.type; op.cat=payload.cat; op.sub=payload.sub; op.label=payload.label; op.amount=payload.amount; }
+      saveImportMonthFromOps(ey, emk);
+    } else if(editingSrc==='livret' && editingKey){
+      const ey = editingKey.year;
+      const mi2 = MONTHS.indexOf(emk);
+      const m = epargneData[String(ey)] && epargneData[String(ey)][mi2];
+      if(m && m.operations && m.operations[editingKey.idx]){
+        const op = m.operations[editingKey.idx];
+        op.type=payload.type; op.cat=payload.cat; op.label=payload.label; op.montant=payload.amount;
+        op.interne = isInterne(op); if('sous' in op) delete op.sous;
+      }
+      recomputeLivretSoldes(ey, mi2);
+    } else if(editingKey){
+      const {mk:ekmk, year:ey, i:ei} = editingKey;
       // si on a changé de année ou de mois, on déplace l'opération
-      if(emk!==mk || ey!==state.year){
-        const src = oy(ey)[emk];
-        if(src){ src.splice(ei,1); if(!src.length) delete oy(ey)[emk]; }
+      if(ekmk!==mk || ey!==state.year){
+        const src = oy(ey)[ekmk];
+        if(src){ src.splice(ei,1); if(!src.length) delete oy(ey)[ekmk]; }
         if(!oy(state.year)[mk]) oy(state.year)[mk]=[];
         oy(state.year)[mk].push(payload);
       } else {
@@ -2085,6 +2660,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       oy(state.year)[mk].push(payload);
     }
     editingKey = null;
+    editingSrc = 'user';
+    editingDate = '';
+    document.getElementById('fMois').disabled = false;
     saveOps();
     document.getElementById('modal').classList.add('hidden');
     state.month = mi;
