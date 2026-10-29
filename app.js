@@ -99,9 +99,35 @@ function addSub(id,name){ const a=subsOf(id); const n=String(name||'').trim(); i
 function removeSub(id,i){ subsOf(id).splice(i,1); if(subcats[id].length===0) delete subcats[id]; saveSubcats(); }
 
 function norm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+/* Clé canonique d'une catégorie : rend « Auto & Moto », « auto moto », « Voyages & Transports »,
+   « Voyages et transports », « Abonnement et téléphonie »… équivalents (insensible & / et / accents) */
+function catKey(cat){
+  return norm(String(cat||''))
+    .replace(/&\s*/g,' ')          // « & » et « et » traités comme des séparateurs
+    .replace(/\bet\b/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+/* Anciens libellés (banque / imports) non couverts par catKey (différences singulier/pluriel, mots absents) */
+const CAT_ALIASES = {
+  'voyage transport':'Voyages & Transports',
+  'abonnement telephonie':'Abonnements & téléphonie',
+  'loisirs':'Loisirs et sorties',
+  'impots taxe':'Impôts et taxes',
+  'mouvement interne debiteur':'Mouvements internes débiteurs',
+};
+/* Libellé canonique affiché : ramène une variante de libellé vers le label standard de CATS */
+function catCanon(cat){
+  const direct = CATS.find(c => catKey(c.key)===catKey(cat));
+  if(direct) return direct.label;
+  return CAT_ALIASES[catKey(cat)] || cat;
+}
+/* Clé de regroupement : toujours dérivée du libellé canonique pour que toutes les
+   variantes (« Voyages & Transports », « voyage et transport », singulier/pluriel…) collisionnent */
+function canonKey(cat){ return catKey(catCanon(cat)); }
 function catMeta(key){
-  const k = norm(key);
-  const found = CATS.find(c => norm(c.key)===k);
+  const k = catKey(key);
+  const found = CATS.find(c => catKey(c.key)===k);
   if(found) return found;
   // couleur déterministe stable pour les catégories personnalisées
   const colors = ['#22c55e','#4f9cf9','#f59e0b','#a78bfa','#f472b6','#2dd4bf','#38bdf8','#facc15','#34d399','#fb7185','#e879f9'];
@@ -460,10 +486,10 @@ function monthWithOps(mk){ return monthWithOpsFor(state.year, mk); }
 function catTotalsMkFor(year, mk){
   const {month, depOps} = monthWithOpsFor(year, mk);
   const map = {};
-  (month.depenses||[]).forEach(c=>{ map[norm(c.categorie)] = {total:parseAmount(c.total), label:c.categorie, items:c.items||[]}; });
+  (month.depenses||[]).forEach(c=>{ map[canonKey(c.categorie)] = {total:parseAmount(c.total), label:catCanon(c.categorie), items:c.items||[]}; });
   depOps.forEach(o=>{
-    const k = norm(o.cat);
-    if(!map[k]) map[k] = {total:0,label:o.cat,items:[]};
+    const k = canonKey(o.cat);
+    if(!map[k]) map[k] = {total:0,label:catCanon(o.cat),items:[]};
     map[k].total = addAmounts(map[k].total, o.amount);
     if(!map[k].userOps) map[k].userOps=[];
     map[k].userOps.push({label:o.label, amount:o.amount});
@@ -478,9 +504,9 @@ function livretExpenseMap(year, mk, externalOnly){
   epargneOps(year, mk).forEach(o=>{
     if(o.type!=='depense') return;
     if(externalOnly && isInterne(o)) return;
-    const k = norm(o.cat);
+    const k = canonKey(o.cat);
     const amt = o.montant || o.amount || 0;
-    if(!map[k]) map[k] = {total:0,label:o.cat,items:[]};
+    if(!map[k]) map[k] = {total:0,label:catCanon(o.cat),items:[]};
     map[k].total = addAmounts(map[k].total, amt);
     map[k].items.push({
       nom: [o.date, o.label].filter(Boolean).join(' · '),
@@ -1004,8 +1030,9 @@ function buildExpenseSections(acc, mk){
   const sections = [];
   const secIdx = {};
   function secOf(cat){
-    const k = norm(cat);
-    if(!secIdx[k]){ const s={cat, color:catMeta(cat).color, total:0, subs:{}, subsList:[]}; secIdx[k]=s; sections.push(s); }
+    const canon = catCanon(cat);
+    const k = catKey(canon);
+    if(!secIdx[k]){ const s={cat:canon, color:catMeta(canon).color, total:0, subs:{}, subsList:[]}; secIdx[k]=s; sections.push(s); }
     return secIdx[k];
   }
   function put(cat, sub, amount, row){
@@ -1179,20 +1206,20 @@ function catTotalsFor(year, monthNames){
     const month = monthsArr.find(m=>m.mois===mk) || emptyMonth(mk);
     (month.depenses||[]).forEach(c=>{
       if(isBaseEpargne(c.categorie)) return; // épargne / virements internes non réels
-      const k = norm(c.categorie); if(!map[k]) map[k]={total:0,label:c.categorie};
+      const k = canonKey(c.categorie); if(!map[k]) map[k]={total:0,label:catCanon(c.categorie)};
       map[k].total = addAmounts(map[k].total, parseAmount(c.total));
     });
     (opsMap[mk]||[]).forEach(o=>{
       if(o.type!=='depense') return;
       if((o.compte||'commun')!=='commun') return;
       if(isEpargneOp(o)) return; // épargne / virements internes non réels
-      const k = norm(o.cat); if(!map[k]) map[k]={total:0,label:o.cat};
+      const k = canonKey(o.cat); if(!map[k]) map[k]={total:0,label:catCanon(o.cat)};
       map[k].total = addAmounts(map[k].total, o.amount);
     });
     epargneOps(year, mk).forEach(o=>{
       if(o.type!=='depense' || isInterne(o)) return;
       const amt = o.montant || o.amount || 0;
-      const k = norm(o.cat); if(!map[k]) map[k]={total:0,label:o.cat};
+      const k = canonKey(o.cat); if(!map[k]) map[k]={total:0,label:catCanon(o.cat)};
       map[k].total = addAmounts(map[k].total, amt);
     });
   });
@@ -1242,7 +1269,7 @@ function renderBudget(){
 
   // Union des catégories (catégories connues + présentes dans les données)
   const seen = {}; const keys = [];
-  CATS.forEach(c=>{ const k=norm(c.key); if(!seen[k]){ seen[k]=1; keys.push(k); } });
+  CATS.forEach(c=>{ const k=catKey(c.key); if(!seen[k]){ seen[k]=1; keys.push(k); } });
   [...Object.keys(refByCat), ...Object.keys(curByCat)].forEach(k=>{ if(!seen[k]){ seen[k]=1; keys.push(k); } });
 
   let totalRef=0, totalCur=0;
@@ -1303,7 +1330,7 @@ function renderBudgetMonth(){
 
   // Union des catégories
   const seen = {}; const keys = [];
-  CATS.forEach(c=>{ const k=norm(c.key); if(!seen[k]){ seen[k]=1; keys.push(k); } });
+  CATS.forEach(c=>{ const k=catKey(c.key); if(!seen[k]){ seen[k]=1; keys.push(k); } });
   [...Object.keys(refByCat), ...Object.keys(curByCat)].forEach(k=>{ if(!seen[k]){ seen[k]=1; keys.push(k); } });
 
   let budgetM=0, spentM=0;
@@ -1486,7 +1513,7 @@ function renderSankey(mk){
   const cm = catTotalsMk(mk);
   Object.keys(cm).forEach(k=>{ if(isEpargneCatKey(k)) delete cm[k]; });
   const map = mergeCatMaps(cm, livretExpenseMap(state.year, mk, true));
-  const groups = CHART_GROUPS.map(g=>({label:g.label, color:g.color, keys:g.keys.map(norm), total:0}));
+  const groups = CHART_GROUPS.map(g=>({label:g.label, color:g.color, keys:g.keys.map(catKey), total:0}));
   const catchAll = {label:'Autres', color:'#94a3b8', keys:[], total:0};
   Object.keys(map).forEach(k=>{
     const v = map[k].total;
@@ -2395,16 +2422,16 @@ function rebuildImportMonthFromOps(y, mk){
   const ops = (importOps[y]||{})[mk] || [];
   const dep={}, rev={}, order=[];
   const catRank = {};
-  (CATS||[]).forEach((c,i)=>{ catRank[norm(c.key)] = i; });
+  (CATS||[]).forEach((c,i)=>{ catRank[catKey(c.key)] = i; });
   for(const o of ops){
     if(o.type==='depense'){
-      const P = o.cat||'Autre', k = norm(P);
+      const P = catCanon(o.cat||'Autre'), k = canonKey(P);
       if(!dep[k]){ dep[k]={label:P, items:{}, total:0}; order.push(k); }
       const it = o.sub||'Autre';
       dep[k].total = addAmounts(dep[k].total, o.amount);
       dep[k].items[it] = addAmounts(dep[k].items[it]||0, o.amount);
     } else {
-      const P = o.cat||'Autre revenu', k = norm(P);
+      const P = catCanon(o.cat||'Autre revenu'), k = canonKey(P);
       if(!rev[k]) rev[k] = {label:P, total:0};
       rev[k].total = addAmounts(rev[k].total, o.amount);
     }
