@@ -48,6 +48,7 @@ En cas de « session expirée », il suffit de se reconnecter.
 | `custom_cats` | Catégories personnalisées |
 | `custom_src`  | Sources de revenus personnalisées |
 | `subcats`     | Sous-catégories |
+| `cats_state`  | Catégories / sources supprimées (et catégorie de regroupement) |
 
 `data.js` sert uniquement de **germe de départ** pour l'année 2026 si la base
 est vide.

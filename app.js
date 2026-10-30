@@ -117,14 +117,57 @@ const CAT_ALIASES = {
   'mouvement interne debiteur':'Mouvements internes débiteurs',
   'mouvements internes':'Mouvements internes débiteurs',
 };
+/* Catégories supprimées par l'utilisateur (standard OU personnalisées).
+   Persistées dans Supabase sous la clé `cats_state` :
+     { depense: [ {id, target} ], revenu: [ {id, target} ] }
+   `id`     = libellé (clé CATS pour les standards, nom saisi pour les perso)
+   `target` = catégorie vers laquelle sont transférées ses opérations
+              (chaîne vide = aucune réaffectation)
+   Les opérations existantes ne sont pas modifiées : elles sont regroupées
+   sous la catégorie de destination à l'affichage (donc réversible). */
+let catsState = { depense: [], revenu: [] };
+let catRemap = {};   // { cléNormalisée(id supprimé) : libellé cible }
+
+function rebuildRemap(){
+  catRemap = {};
+  ['depense','revenu'].forEach(mode=>{
+    (catsState[mode]||[]).forEach(en=>{
+      if(!en || !en.id) return;
+      const target = String(en.target||'').trim();
+      if(target) catRemap[catKey(en.id)] = target;
+    });
+  });
+}
+function saveCatsState(){ rebuildRemap(); saveKey('cats_state', catsState); }
+function hiddenIds(mode){ return (catsState[mode]||[]).map(en=>en.id); }
+function isHiddenCat(mode, id){
+  const k = catKey(id);
+  return hiddenIds(mode).some(x=>catKey(x)===k);
+}
+/* Applique la réaffectation éventuelle d'une catégorie supprimée */
+function resolveRemap(label){
+  let out = label, guard = 0;
+  const seen = {};
+  while(out){
+    const k = catKey(out);
+    if(!catRemap[k] || seen[k] || guard++ > 10) break;
+    seen[k] = 1;
+    out = catRemap[k];
+  }
+  return out;
+}
+/* Libellé canonique d'une source de revenu (réaffectation des sources supprimées) */
+function srcCanon(src){ return resolveRemap(src); }
+
 /* Libellé canonique affiché : ramène une variante de libellé vers la clé
    standard de CATS. On renvoie la clé technique (et non le libellé court) pour
    que toutes les variantes produisent exactement la même chaîne, et donc une
-   seule catégorie à l'écran. */
+   seule catégorie à l'écran. Les catégories supprimées sont remplacées par
+   leur catégorie de destination. */
 function catCanon(cat){
   const direct = CATS.find(c => catKey(c.key)===catKey(cat));
-  if(direct) return direct.key;
-  return CAT_ALIASES[catKey(cat)] || cat;
+  const base = direct ? direct.key : (CAT_ALIASES[catKey(cat)] || cat);
+  return resolveRemap(base);
 }
 /* Clé de regroupement : toujours dérivée du libellé canonique pour que toutes les
    variantes (« Voyages & Transports », « voyage et transport », singulier/pluriel…) collisionnent */
@@ -232,6 +275,14 @@ async function initStorage(){
     customCats = (d && Array.isArray(d.custom_cats)) ? d.custom_cats : [];
     customSrc  = (d && Array.isArray(d.custom_src))  ? d.custom_src  : [];
     subcats    = (d && d.subcats && typeof d.subcats==='object' && !Array.isArray(d.subcats)) ? d.subcats : {};
+
+    /* --- Catégories supprimées (standard et personnalisées) --- */
+    const rawCats = (d && d.cats_state && typeof d.cats_state==='object' && !Array.isArray(d.cats_state)) ? d.cats_state : {};
+    catsState = {
+      depense: Array.isArray(rawCats.depense) ? rawCats.depense.filter(x=>x && x.id) : [],
+      revenu:  Array.isArray(rawCats.revenu)  ? rawCats.revenu.filter(x=>x && x.id)  : [],
+    };
+    rebuildRemap();
 
     /* --- Opérations par année : ops = { "2026": { "janvier": [..], .. }, … } --- */
     let rawOps = (d && d.ops && typeof d.ops==='object') ? d.ops : {};
@@ -780,10 +831,11 @@ function commonRevenueGroups(year, mk){
   (w.month.revenus||[]).forEach(r=>{
     // Les lignes génériques « mouvement interne créditeur » sont détaillées
     // (virement reçu, santé, voyage...) pour pouvoir les traiter séparément.
-    const generique = norm(r.nom) === 'mouvement interne crediteur';
+    const nomC = srcCanon(r.nom);
+    const generique = norm(nomC) === 'mouvement interne crediteur';
     const detail = (r.detail||'').trim();
-    const k = (generique && detail) ? norm(r.nom)+'|'+norm(detail) : norm(r.nom);
-    const label = (generique && detail) ? r.nom + ' · ' + detail : r.nom;
+    const k = (generique && detail) ? norm(nomC)+'|'+norm(detail) : norm(nomC);
+    const label = (generique && detail) ? nomC + ' · ' + detail : nomC;
     if(!map[k]) map[k] = {label, items:[], total:0};
     const amt = parseAmount(r.montant);
     map[k].total = Math.round((map[k].total+amt)*100)/100;
@@ -793,8 +845,9 @@ function commonRevenueGroups(year, mk){
   opsOfYear(year, mk).forEach((o,i)=>{
     if(o.type!=='revenu') return;
     if((o.compte||'commun')==='livret') return;   // vies dans les groupes Livret
-    const k = norm(o.cat);
-    if(!map[k]) map[k] = {label:o.cat, items:[], total:0, user:[]};
+    const catC = srcCanon(o.cat);
+    const k = norm(catC);
+    if(!map[k]) map[k] = {label:catC, items:[], total:0, user:[]};
     if(!map[k].user) map[k].user=[];
     map[k].total = addAmounts(map[k].total, o.amount);
     map[k].user.push({label:o.label, amount:o.amount, i, compte:o.compte||'commun'});
@@ -809,9 +862,10 @@ function livretRevenueGroups(year, mk, externalOnly){
   ((m&&m.operations)||[]).forEach(o=>{
     if(o.type!=='revenu') return;
     if(externalOnly && isInterne(o)) return;
-    const k = norm(o.cat);
+    const catC = srcCanon(o.cat);
+    const k = norm(catC);
     const amt = o.montant || 0;
-    if(!map[k]) map[k] = {label:o.cat, items:[], total:0};
+    if(!map[k]) map[k] = {label:catC, items:[], total:0};
     map[k].total = addAmounts(map[k].total, amt);
     map[k].items.push({detail:[o.date,o.label].filter(Boolean).join(' · '), amount:amt});
   });
@@ -820,8 +874,9 @@ function livretRevenueGroups(year, mk, externalOnly){
     if(o.type!=='revenu') return;
     if((o.compte||'commun')!=='livret') return;
     if(externalOnly && isInterne(o)) return;
-    const k = norm(o.cat);
-    if(!map[k]) map[k] = {label:o.cat, items:[], total:0, user:[]};
+    const catC = srcCanon(o.cat);
+    const k = norm(catC);
+    if(!map[k]) map[k] = {label:catC, items:[], total:0, user:[]};
     if(!map[k].user) map[k].user=[];
     map[k].total = addAmounts(map[k].total, o.amount);
     map[k].user.push({label:o.label, amount:o.amount, i, compte:'livret'});
@@ -1284,7 +1339,7 @@ function renderBudget(){
 
   // Union des catégories (catégories connues + présentes dans les données)
   const seen = {}; const keys = [];
-  CATS.forEach(c=>{ const k=catKey(c.key); if(!seen[k]){ seen[k]=1; keys.push(k); } });
+  CATS.filter(c=>!isHiddenCat('depense', c.key)).forEach(c=>{ const k=catKey(c.key); if(!seen[k]){ seen[k]=1; keys.push(k); } });
   [...Object.keys(refByCat), ...Object.keys(curByCat)].forEach(k=>{ if(!seen[k]){ seen[k]=1; keys.push(k); } });
 
   let totalRef=0, totalCur=0;
@@ -1345,7 +1400,7 @@ function renderBudgetMonth(){
 
   // Union des catégories
   const seen = {}; const keys = [];
-  CATS.forEach(c=>{ const k=catKey(c.key); if(!seen[k]){ seen[k]=1; keys.push(k); } });
+  CATS.filter(c=>!isHiddenCat('depense', c.key)).forEach(c=>{ const k=catKey(c.key); if(!seen[k]){ seen[k]=1; keys.push(k); } });
   [...Object.keys(refByCat), ...Object.keys(curByCat)].forEach(k=>{ if(!seen[k]){ seen[k]=1; keys.push(k); } });
 
   let budgetM=0, spentM=0;
@@ -1462,20 +1517,23 @@ function revenueSourcesFor(mk){
   const w = monthWithOps(mk);
   const map = {};
   (w.month.revenus||[]).forEach(r=>{
-    const k = norm(r.nom);
-    if(!map[k]) map[k] = {label:r.nom, total:0};
+    const nomC = srcCanon(r.nom);
+    const k = norm(nomC);
+    if(!map[k]) map[k] = {label:nomC, total:0};
     map[k].total = addAmounts(map[k].total, parseAmount(r.montant));
   });
   w.revOps.forEach(o=>{
-    const k = norm(o.cat);
-    if(!map[k]) map[k] = {label:o.cat, total:0};
+    const catC = srcCanon(o.cat);
+    const k = norm(catC);
+    if(!map[k]) map[k] = {label:catC, total:0};
     map[k].total = addAmounts(map[k].total, o.amount);
   });
   epargneOps(state.year, mk).forEach(o=>{
     if(o.type!=='revenu' || isInterne(o)) return;
     const amt = o.montant || o.amount || 0;
-    const k = norm(o.cat);
-    if(!map[k]) map[k] = {label:o.cat, total:0};
+    const catC = srcCanon(o.cat);
+    const k = norm(catC);
+    if(!map[k]) map[k] = {label:catC, total:0};
     map[k].total = addAmounts(map[k].total, amt);
   });
   return Object.values(map).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
@@ -1718,8 +1776,7 @@ function openEdit(mk, i){
   sel.value = MONTHS.indexOf(mk);
   setFormAccount(op.compte || 'commun');
   setFormType(op.type);
-  const fcat = document.getElementById('fCat');
-  if([...fcat.options].some(o=>o.value===op.cat)) fcat.value = op.cat; else fcat.value='';
+  setFormCatValue(op.cat);
   updateSubSelect();
   if(op.sub) document.getElementById('fSub').value = op.sub;
   const lbl = (op.label && op.label!==op.sub) ? op.label : '';
@@ -1744,8 +1801,7 @@ function openEditImport(mk, id){
   sel.value = MONTHS.indexOf(mk);
   setFormAccount('commun');
   setFormType(op.type);
-  const fcat = document.getElementById('fCat');
-  if([...fcat.options].some(o=>o.value===op.cat)) fcat.value = op.cat; else fcat.value='';
+  setFormCatValue(op.cat);
   updateSubSelect();
   if(op.sub) document.getElementById('fSub').value = op.sub;
   const lbl = (op.label && op.label!==op.sub) ? op.label : '';
@@ -1770,8 +1826,7 @@ function openEditLivret(mk, idx){
   sel.value = mi;
   setFormAccount('livret');
   setFormType(op.type);
-  const fcat = document.getElementById('fCat');
-  if([...fcat.options].some(o=>o.value===op.cat)) fcat.value = op.cat; else fcat.value='';
+  setFormCatValue(op.cat);
   updateSubSelect();
   const lbl = (op.label && op.label!==op.cat) ? op.label : '';
   document.getElementById('fLabel').value = lbl||'';
@@ -1784,12 +1839,28 @@ function setFormAccount(acc){
 }
 function setFormType(type){
   document.querySelectorAll('#addForm .seg[data-type]').forEach(b=>b.classList.toggle('active', b.dataset.type===type));
-  const base = type==='depense' ? CATS.map(c=>`<option value="${c.key}">${c.label}</option>`)
-                                : REVENUE_SOURCES.map(s=>`<option value="${s}">${s}</option>`);
-  const custom = (type==='depense'?customCats:customSrc).map(c=>`<option value="${c}">${c} (personnalisée)</option>`);
+  const mode = type==='depense' ? 'depense' : 'revenu';
+  const vis = id => !isHiddenCat(mode, id);
+  const base = type==='depense' ? CATS.filter(c=>vis(c.key)).map(c=>`<option value="${c.key}">${c.label}</option>`)
+                                : REVENUE_SOURCES.filter(vis).map(s=>`<option value="${s}">${s}</option>`);
+  const custom = (type==='depense'?customCats:customSrc).filter(vis).map(c=>`<option value="${c}">${c} (personnalisée)</option>`);
   const cat = document.getElementById('fCat');
   cat.innerHTML = base.join('') + custom.join('');
   updateSubSelect();
+}
+/* Sélectionne une catégorie dans le formulaire. Si elle a été supprimée (ou
+   n'existe plus dans la liste), on l'ajoute le temps de l'édition pour ne pas
+   la perdre à l'enregistrement. */
+function setFormCatValue(cat){
+  const sel = document.getElementById('fCat');
+  if(!cat){ sel.value=''; return; }
+  if(![...sel.options].some(o=>o.value===cat)){
+    const o = document.createElement('option');
+    o.value = cat;
+    o.textContent = cat + ' (hors liste)';
+    sel.appendChild(o);
+  }
+  sel.value = cat;
 }
 /* Sous-catégories déjà utilisées dans les mois (données de base + saisies)
    pour une catégorie (dépense) ou source (revenu) donnée.
@@ -2178,16 +2249,101 @@ function drawSankey(id, ins, outs){
 
 /* ============ GESTION DES CATÉGORIES ============ */
 let catMode = 'depense';
+let pendingDelCat = null;   // { mode, id } — suppression en attente de confirmation
+
+/* Catégories proposées dans les listes (les supprimées sont masquées) */
 function allCats(mode){
+  const vis = id => !isHiddenCat(mode, id);
   if(mode==='depense') return [
-    ...CATS.map(c=>({id:c.key, label:c.label, custom:false})),
-    ...customCats.map(c=>({id:c, label:c+' (personnalisée)', custom:true})),
+    ...CATS.filter(c=>vis(c.key)).map(c=>({id:c.key, label:c.label, custom:false})),
+    ...customCats.filter(vis).map(c=>({id:c, label:c, custom:true})),
   ];
   return [
-    ...REVENUE_SOURCES.map(s=>({id:s, label:s, custom:false})),
-    ...customSrc.map(s=>({id:s, label:s+' (personnalisée)', custom:true})),
+    ...REVENUE_SOURCES.filter(vis).map(s=>({id:s, label:s, custom:false})),
+    ...customSrc.filter(vis).map(s=>({id:s, label:s, custom:true})),
   ];
 }
+/* Libellé lisible d'une catégorie, même supprimée */
+function catLabelOf(mode, id){
+  if(mode==='depense'){ const c = CATS.find(x=>catKey(x.key)===catKey(id)); if(c) return c.label; }
+  else { const s = REVENUE_SOURCES.find(x=>catKey(x)===catKey(id)); if(s) return s; }
+  return id;
+}
+/* Catégories supprimées, pour la section « Restaurer » */
+function removedCats(mode){
+  return (catsState[mode]||[]).map((en,i)=>({
+    i, id:en.id, target:en.target||'', label:catLabelOf(mode, en.id),
+  }));
+}
+/* Nombre d'opérations qui utilisent encore une catégorie (avertissement) */
+function catUsageCount(mode, id){
+  const k = canonKey(id);
+  let n = 0;
+  Object.keys(baseData).forEach(y=>{
+    (baseData[y]||[]).forEach(m=>{
+      if(mode==='depense') (m.depenses||[]).forEach(c=>{ if(canonKey(c.categorie)===k) n += (c.items||[]).length || 1; });
+      else (m.revenus||[]).forEach(r=>{ if(canonKey(r.nom)===k) n++; });
+    });
+  });
+  Object.keys(importOps).forEach(y=>Object.keys(importOps[y]||{}).forEach(mk=>{
+    (importOps[y][mk]||[]).forEach(o=>{ if(o.type===mode && canonKey(o.cat)===k) n++; });
+  }));
+  Object.keys(userOps).forEach(y=>Object.keys(userOps[y]||{}).forEach(mk=>{
+    (userOps[y][mk]||[]).forEach(o=>{ if(o.type===mode && canonKey(o.cat)===k) n++; });
+  }));
+  Object.keys(epargneData).forEach(y=>{
+    (epargneData[y]||[]).forEach(m=>{
+      (m.operations||[]).forEach(o=>{ if(o.type===mode && canonKey(o.cat)===k) n++; });
+    });
+  });
+  return n;
+}
+/* Ouvre la fenêtre de confirmation de suppression */
+function askDeleteCat(mode, id){
+  pendingDelCat = { mode, id };
+  const label = catLabelOf(mode, id);
+  const used = catUsageCount(mode, id);
+  const mot = mode==='depense' ? 'catégorie' : 'source de revenu';
+  const t = document.getElementById('delCatTitle');
+  if(t) t.textContent = 'Supprimer la ' + mot;
+  const info = document.getElementById('delCatInfo');
+  if(info){
+    info.innerHTML = `« <strong>${e(label)}</strong> » ne sera plus proposée et n'apparaîtra plus dans les mois, le budget ni les graphiques.`
+      + (used
+          ? `<br><br>${used} opération${used>1?'s':''} utilisent encore cette ${mot}. Choisis la ${mode==='depense'?'catégorie':'source'} vers laquelle les regrouper (aucune opération n'est supprimée).`
+          : `<br><br>Aucune opération n'utilise cette ${mot}.`);
+  }
+  const sel = document.getElementById('delCatTarget');
+  const others = allCats(mode).filter(c=>catKey(c.id)!==catKey(id));
+  sel.innerHTML = others.length
+    ? others.map(c=>`<option value="${e(c.id)}">${e(c.label)}</option>`).join('')
+    : '<option value="">Ne rien transférer</option>';
+  // Destination par défaut : « Autre revenu » pour les revenus, sinon la 1re catégorie
+  const pref = (mode==='revenu' && others.find(o=>catKey(o.id)==='autre revenu')) || others[0];
+  if(pref) sel.value = pref.id;
+  document.getElementById('delCatModal').classList.remove('hidden');
+}
+function confirmDeleteCat(){
+  if(!pendingDelCat) return;
+  const { mode, id } = pendingDelCat;
+  const target = document.getElementById('delCatTarget').value;
+  pendingDelCat = null;
+  catsState[mode] = (catsState[mode]||[]).filter(x=>catKey(x.id)!==catKey(id));
+  catsState[mode].push({ id, target });
+  saveCatsState();
+  document.getElementById('delCatModal').classList.add('hidden');
+  renderCatManager();
+  showToast((mode==='depense'?'Catégorie':'Source') + ' supprimée ✔');
+}
+function restoreCat(mode, i){
+  const en = (catsState[mode]||[])[i];
+  if(!en) return;
+  catsState[mode].splice(i,1);
+  saveCatsState();
+  renderCatManager();
+  showToast((mode==='depense'?'Catégorie':'Source') + ' restaurée ✔');
+}
+
 function renderCatManager(){
   const listBox = document.getElementById('catList');
   document.querySelectorAll('#catModeSeg .seg').forEach(b=>b.classList.toggle('active', b.dataset.catmode===catMode));
@@ -2196,19 +2352,18 @@ function renderCatManager(){
     ? 'Nom de la nouvelle catégorie de dépense'
     : 'Nom de la nouvelle source de revenu';
   const cats = allCats(catMode);
-  if(!cats.length){ listBox.innerHTML='<div class="muted">Aucune catégorie.</div>'; return; }
-  listBox.innerHTML = cats.map((c,ci)=>{
+  const removed = removedCats(catMode);
+
+  const cards = cats.length ? cats.map((c,ci)=>{
     const subs = subsOf(c.id);
     const chips = subs.length
       ? subs.map((s,si)=>`<span class="chip">${e(s)} <button type="button" class="chip-x" data-del-sub="${ci}-${si}" title="Supprimer">✕</button></span>`).join(' ')
       : '<span class="muted" style="font-size:12px">Aucune sous-catégorie</span>';
-    const cab = c.custom
-      ? `<button type="button" class="btn ghost small" data-del-cat="${ci}">Supprimer</button>`
-      : '<span class="muted" style="font-size:11px">standard</span>';
+    const tag = c.custom ? ' <span class="muted" style="font-size:11px">personnalisée</span>' : '';
     return `<div class="cat">
       <div class="head" onclick="this.parentElement.classList.toggle('open')">
-        <span class="cname">${e(c.label)}</span>
-        ${cab}
+        <span class="cname">${e(c.label)}${tag}</span>
+        <button type="button" class="btn ghost small" data-del-cat="${ci}">Supprimer</button>
       </div>
       <div class="body">
         <div class="subs" style="line-height:1.9">${chips}</div>
@@ -2218,15 +2373,27 @@ function renderCatManager(){
         </div>
       </div>
     </div>`;
-  }).join('');
+  }).join('') : '<div class="muted">Aucune catégorie.</div>';
 
-  listBox.querySelectorAll('[data-del-cat]').forEach(b=>b.onclick=()=>{
-    const i=+b.dataset.delCat;
-    const arr = catMode==='depense'?customCats:customSrc;
-    const id = allCats(catMode)[i].id;
-    arr.splice(arr.indexOf(id),1);
-    if(catMode==='depense') saveCats(); else saveSrc();
-    renderCatManager();
+  const removedHtml = removed.length ? `
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+      <div class="muted" style="font-size:12px;margin-bottom:8px">
+        ${isDep?'Catégories':'Sources'} supprimées — cliquez sur « Restaurer » pour les réafficher partout.
+      </div>
+      <div>${removed.map(r=>`<span class="chip">${e(r.label)}${r.target?` <span class="muted">→ ${e(r.target)}</span>`:''}
+        <button type="button" class="btn ghost small" data-restore-cat="${r.i}">Restaurer</button></span>`).join(' ')}</div>
+    </div>` : '';
+
+  listBox.innerHTML = cards + removedHtml;
+
+  listBox.querySelectorAll('[data-del-cat]').forEach(b=>b.onclick=(ev)=>{
+    ev.stopPropagation();
+    const c = allCats(catMode)[+b.dataset.delCat];
+    if(c) askDeleteCat(catMode, c.id);
+  });
+  listBox.querySelectorAll('[data-restore-cat]').forEach(b=>b.onclick=(ev)=>{
+    ev.stopPropagation();
+    restoreCat(catMode, +b.dataset.restoreCat);
   });
   listBox.querySelectorAll('[data-del-sub]').forEach(b=>b.onclick=()=>{
     const [ci,si]=b.dataset.delSub.split('-').map(Number);
@@ -2639,7 +2806,18 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     const name = document.getElementById('newCatName').value.trim();
     if(!name){ showToast('Saisis un nom de ' + (catMode==='depense'?'catégorie':'source') + '.','err'); return; }
     const arr = catMode==='depense' ? customCats : customSrc;
-    if(arr.some(x=>norm(x)===norm(name))){ showToast('Elle existe déjà.','err'); return; }
+    const hidden = (catsState[catMode]||[]).find(x=>catKey(x.id)===catKey(name));
+    if(hidden){
+      // catégorie déjà créée mais supprimée : on la restaure
+      restoreCat(catMode, catsState[catMode].indexOf(hidden));
+      document.getElementById('newCatName').value='';
+      return;
+    }
+    if(arr.some(x=>norm(x)===norm(name))
+       || (catMode==='depense' && CATS.some(c=>catKey(c.key)===catKey(name)))
+       || (catMode==='revenu' && REVENUE_SOURCES.some(s=>catKey(s)===catKey(name)))){
+      showToast('Elle existe déjà.','err'); return;
+    }
     arr.push(name);
     if(catMode==='depense') saveCats(); else saveSrc();
     document.getElementById('newCatName').value='';
@@ -2649,6 +2827,11 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   document.getElementById('newCatName').addEventListener('keydown', ev=>{
     if(ev.key==='Enter'){ ev.preventDefault(); document.getElementById('btnNewCat').click(); }
   });
+  /* Suppression d'une catégorie (standard ou personnalisée) */
+  const delModal = document.getElementById('delCatModal');
+  document.getElementById('delCatClose').onclick=()=>{ pendingDelCat=null; delModal.classList.add('hidden'); };
+  document.getElementById('delCatCancel').onclick=()=>{ pendingDelCat=null; delModal.classList.add('hidden'); };
+  document.getElementById('delCatConfirm').onclick=confirmDeleteCat;
 
   document.getElementById('btnReset').onclick=()=>{
     if(confirm('Supprimer toutes vos opérations ajoutées ?')){

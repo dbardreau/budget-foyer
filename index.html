@@ -235,7 +235,7 @@
   <section id="tab-categories" class="panel">
     <div class="card">
       <h3>Gestion des catégories et sous-catégories</h3>
-      <p class="muted" style="font-size:13px">Ajoute ici tes propres catégories de dépenses ou sources de revenus, et des sous-catégories pour mieux détailler. Elles seront proposées dans le formulaire d'ajout d'une opération.</p>
+      <p class="muted" style="font-size:13px">Ajoute ici tes propres catégories de dépenses ou sources de revenus, et des sous-catégories pour mieux détailler. Elles seront proposées dans le formulaire d'ajout d'une opération. Toutes les catégories — standard ou personnalisées — peuvent être supprimées : leurs opérations sont alors regroupées dans la catégorie de ton choix, et une catégorie supprimée peut être restaurée à tout moment.</p>
       <div class="segmented" id="catModeSeg" style="margin:14px 0">
         <button type="button" class="seg active" data-catmode="depense">Dépenses</button>
         <button type="button" class="seg" data-catmode="revenu">Revenus</button>
@@ -323,6 +323,26 @@
     <div class="modal-foot">
       <button type="button" id="importCancel" class="btn ghost">Annuler</button>
       <button type="button" id="importRun" class="btn primary">Importer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODALE SUPPRESSION CATÉGORIE ============ -->
+<div id="delCatModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="delCatTitle">Supprimer la catégorie</h3>
+      <button id="delCatClose" type="button" class="btn ghost">✕</button>
+    </div>
+    <p class="muted" id="delCatInfo" style="font-size:13px;line-height:1.55"></p>
+    <div class="field">
+      <label for="delCatTarget">Regrouper ses opérations dans…</label>
+      <select id="delCatTarget"></select>
+      <div class="muted" style="font-size:11px;margin-top:6px">Aucune opération n'est effacée : les montants sont simplement rattachés à la catégorie choisie.</div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" id="delCatCancel" class="btn ghost">Annuler</button>
+      <button type="button" id="delCatConfirm" class="btn primary">Supprimer</button>
     </div>
   </div>
 </div>
