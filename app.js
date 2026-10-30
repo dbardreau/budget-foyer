@@ -842,19 +842,33 @@ function revColor(key){
 function commonRevenueGroups(year, mk){
   const w = monthWithOpsFor(year, mk);
   const map = {};
-  (w.month.revenus||[]).forEach(r=>{
-    // Les lignes génériques « mouvement interne créditeur » sont détaillées
-    // (virement reçu, santé, voyage...) pour pouvoir les traiter séparément.
-    const nomC = srcCanon(r.nom);
-    const generique = norm(nomC) === 'mouvement interne crediteur';
-    const detail = (r.detail||'').trim();
-    const k = (generique && detail) ? norm(nomC)+'|'+norm(detail) : norm(nomC);
-    const label = (generique && detail) ? nomC + ' · ' + detail : nomC;
-    if(!map[k]) map[k] = {label, items:[], total:0};
-    const amt = parseAmount(r.montant);
-    map[k].total = Math.round((map[k].total+amt)*100)/100;
-    map[k].items.push({detail:r.detail||'', amount:amt});
-  });
+  // Revenus importés individuellement (relevé Boursorama) : on les liste opération
+  // par opération (comme pour les dépenses) pour pouvoir cocher « hors budget ».
+  const impRev = ((importOps[String(year)]||{})[mk]||[]).filter(o=>o.type==='revenu');
+  if(impRev.length){
+    impRev.forEach(o=>{
+      const catC = srcCanon(o.cat);
+      const k = norm(catC);
+      if(!map[k]) map[k] = {label:catC, items:[], total:0, user:[]};
+      if(!map[k].user) map[k].user=[];
+      map[k].total = addAmounts(map[k].total, o.amount);
+      map[k].user.push({label:o.label||o.sub||'', amount:o.amount, horsBudget:isHorsBudget(o), ref:{kind:'import', id:o.id}});
+    });
+  } else {
+    (w.month.revenus||[]).forEach(r=>{
+      // Les lignes génériques « mouvement interne créditeur » sont détaillées
+      // (virement reçu, santé, voyage...) pour pouvoir les traiter séparément.
+      const nomC = srcCanon(r.nom);
+      const generique = norm(nomC) === 'mouvement interne crediteur';
+      const detail = (r.detail||'').trim();
+      const k = (generique && detail) ? norm(nomC)+'|'+norm(detail) : norm(nomC);
+      const label = (generique && detail) ? nomC + ' · ' + detail : nomC;
+      if(!map[k]) map[k] = {label, items:[], total:0};
+      const amt = parseAmount(r.montant);
+      map[k].total = Math.round((map[k].total+amt)*100)/100;
+      map[k].items.push({detail:r.detail||'', amount:amt});
+    });
+  }
   // Opérations manuelles de revenu (avec index réel de userOps pour l'édition)
   opsOfYear(year, mk).forEach((o,i)=>{
     if(o.type!=='revenu') return;
@@ -873,15 +887,16 @@ function commonRevenueGroups(year, mk){
 function livretRevenueGroups(year, mk, externalOnly){
   const map = {};
   const m = epargneMonthOf(year, mk);
-  ((m&&m.operations)||[]).forEach(o=>{
+  ((m&&m.operations)||[]).forEach((o,idx)=>{
     if(o.type!=='revenu') return;
     if(externalOnly && isInterne(o)) return;
     const catC = srcCanon(o.cat);
     const k = norm(catC);
     const amt = o.montant || 0;
-    if(!map[k]) map[k] = {label:catC, items:[], total:0};
+    if(!map[k]) map[k] = {label:catC, items:[], total:0, user:[]};
+    if(!map[k].user) map[k].user=[];
     map[k].total = addAmounts(map[k].total, amt);
-    map[k].items.push({detail:[o.date,o.label].filter(Boolean).join(' · '), amount:amt});
+    map[k].user.push({label:[o.date,o.label].filter(Boolean).join(' · '), amount:amt, horsBudget:isHorsBudget(o), ref:{kind:'livret', idx, compte:'livret'}});
   });
   // saisies manuelles de revenu sur le Livret (avec index réel pour l'édition)
   opsOfYear(year, mk).forEach((o,i)=>{
@@ -918,16 +933,19 @@ function renderRevenueGroups(groups, mk){
     const col = revColor(c.label);
     const items = (c.items||[]).map(r=>`
       <div class="row"><span class="muted">${e(r.detail)||'—'}</span><span class="money" style="color:${col}">${fmt(r.amount)} €</span></div>`).join('');
-    const user = (c.user||[]).map(u=>`
+    const user = (c.user||[]).map(u=>{
+      const ref = u.ref ? JSON.stringify(u.ref) : JSON.stringify({kind:'user', i:u.i});
+      return `
       <div class="row ${u.horsBudget?'hb-row':''}" style="color:var(--accent)">
         <span>${e(u.label)||'Ajout manuel'}</span>
         <div style="display:flex;gap:8px;align-items:center">
-          <label class="hb-check" title="Gros mouvement : reste dans vos revenus, mais est écarté du budget"><input type="checkbox" data-hu="${u.i}" ${u.horsBudget?'checked':''}><span>hors budget</span></label>
+          <label class="hb-check" title="Gros mouvement : reste dans vos revenus, mais est écarté du budget"><input type="checkbox" data-hr='${ref}' ${u.horsBudget?'checked':''}><span>hors budget</span></label>
           <span class="money">+${fmt(u.amount)} €</span>
-          <button class="btn ghost small" data-ru="${u.i}" style="color:var(--accent)">Modifier</button>
-          <button class="btn ghost small" data-rd="${u.i}" style="color:var(--accent)">Suppr.</button>
+          <button class="btn ghost small" data-rr='${ref}' style="color:var(--accent)">Modifier</button>
+          <button class="btn ghost small" data-rd='${ref}' style="color:var(--accent)">Suppr.</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     return `<div class="cat">
       <div class="head" onclick="this.parentElement.classList.toggle('open')">
         <span class="cname" style="color:${col}">● ${e(c.label)}</span>
@@ -936,12 +954,12 @@ function renderRevenueGroups(groups, mk){
       <div class="body">${items}${user}</div>
     </div>`;
   }).join('');
-  box.querySelectorAll('[data-ru]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); openRefEdit({kind:'user', i:+b.dataset.ru}, mk); });
+  box.querySelectorAll('[data-rr]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); openRefEdit(JSON.parse(b.dataset.rr), mk); });
   box.querySelectorAll('[data-rd]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation();
-    if(confirm('Supprimer ce revenu ?')){ removeRefOp({kind:'user', i:+b.dataset.rd}, mk); }
+    if(confirm('Supprimer ce revenu ?')){ removeRefOp(JSON.parse(b.dataset.rd), mk); }
   });
-  box.querySelectorAll('[data-hu]').forEach(cb=>{
-    cb.addEventListener('change', ()=>{ toggleHorsBudget({kind:'user', i:+cb.dataset.hu}, cb.checked, mk); });
+  box.querySelectorAll('[data-hr]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{ toggleHorsBudget(JSON.parse(cb.dataset.hr), cb.checked, mk); });
   });
 }
 
