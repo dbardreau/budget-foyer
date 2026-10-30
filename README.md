@@ -4,7 +4,8 @@ Tableau de bord de gestion du budget familial, **hébergé en ligne sur GitHub P
 et sauvegardé dans une base de données **Supabase** (dans le cloud).
 
 - 🌐 **Site en ligne** : gestion des revenus / dépenses, par année et par mois,
-  graphiques, budget prévisionnel, catégories personnalisées.
+  graphiques, budget prévisionnel, catégories personnalisées, recherche d'opérations
+  (libellé, catégorie, montant, mois) sur tous les comptes.
 - 🔐 **Accès personnel** : une connexion (email + mot de passe) est requise pour
   consulter et modifier les données. Elles sont stockées dans Supabase et
   protégées (Row Level Security).

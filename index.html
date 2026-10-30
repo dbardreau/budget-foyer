@@ -47,6 +47,7 @@
       <button id="nextYear" class="nav-arrow">›</button>
     </div>
     <span id="syncBadge" class="sync-badge" title="État du stockage de vos ajouts manuels"></span>
+    <button id="btnSearch" class="btn" title="Rechercher une opération sur vos comptes (libellé, catégorie, montant)">🔍 Rechercher</button>
     <button id="btnImport" class="btn" title="Importer mes relevés Boursorama (compte commun + Livret) en fin de mois">Importer relevés</button>
     <button id="btnAdd" class="btn primary">＋ Ajouter une opération</button>
     <button id="btnReset" class="btn ghost" title="Effacer vos ajouts personnels">Réinitialiser</button>
@@ -323,6 +324,46 @@
     <div class="modal-foot">
       <button type="button" id="importCancel" class="btn ghost">Annuler</button>
       <button type="button" id="importRun" class="btn primary">Importer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODALE RECHERCHE D'OPÉRATION ============ -->
+<div id="searchModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Rechercher une opération</h3>
+      <button id="searchClose" type="button" class="btn ghost">✕</button>
+    </div>
+    <div class="field">
+      <input id="searchInput" type="search" placeholder="Libellé, catégorie, montant, mois…" autocomplete="off">
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="field" style="flex:1;min-width:150px">
+        <label for="searchCompte">Compte</label>
+        <select id="searchCompte">
+          <option value="tous">Tous les comptes</option>
+          <option value="commun">Compte commun</option>
+          <option value="livret">Livret Bourso+</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;min-width:130px">
+        <label for="searchType">Type</label>
+        <select id="searchType">
+          <option value="tous">Tout</option>
+          <option value="depense">Dépenses</option>
+          <option value="revenu">Revenus</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;min-width:110px">
+        <label for="searchYear">Année</label>
+        <select id="searchYear"><option value="tous">Toutes</option></select>
+      </div>
+    </div>
+    <div class="muted" id="searchCount" style="font-size:12px;margin:0 0 8px"></div>
+    <div id="searchResults"></div>
+    <div class="modal-foot">
+      <button type="button" id="searchDone" class="btn ghost">Fermer</button>
     </div>
   </div>
 </div>

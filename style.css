@@ -263,6 +263,23 @@ body{
 .import-results .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:3px 0;font-size:13px}
 .import-results .money{font-weight:600}
 
+/* ===== Recherche d'opérations ===== */
+#searchModal .modal{width:min(780px,95vw)}
+#searchModal .modal-head{padding:16px 20px}
+#searchModal .field{padding:0 20px;margin-bottom:12px}
+#searchModal .field:first-of-type{padding-top:14px}
+#searchModal .field label{padding:0}
+#searchModal #searchCount{padding:0 20px}
+#searchResults{margin:0 20px 14px;max-height:52vh;overflow:auto;border:1px solid var(--border);border-radius:10px;display:block}
+#searchResults .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-bottom:1px solid #1f2632;font-size:13px}
+#searchResults .row:last-child{border-bottom:none}
+#searchResults .row:hover{background:rgba(255,255,255,.03)}
+#searchResults .s-label{flex:1;min-width:0}
+#searchResults .s-cat{color:var(--muted);font-size:11px}
+#searchResults .s-right{display:flex;align-items:center;gap:8px;flex:none}
+#searchResults .money{font-weight:600;white-space:nowrap}
+#searchModal .modal-foot{padding:0 20px 16px;margin-top:0}
+
 /* ===== Toast ===== */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:12px 20px;border-radius:12px;box-shadow:var(--shadow);z-index:200}
 .toast.hidden{display:none}

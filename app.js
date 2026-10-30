@@ -2419,6 +2419,169 @@ function commitSub(inp){
   renderCatManager();
 }
 
+/* ============ RECHERCHE D'OPÉRATIONS ============ */
+/* Index complet des opérations (tous comptes, toutes années) :
+   compte commun (import individuel ou base agrégée) + Livret + saisies manuelles. */
+let searchIndex = [];
+let searchResults = [];
+const SEARCH_MAX = 300;
+
+function buildSearchIndex(){
+  const out = [];
+  const years = new Set();
+  Object.keys(baseData).forEach(y=>years.add(Number(y)));
+  Object.keys(userOps).forEach(y=>years.add(Number(y)));
+  Object.keys(epargneData).forEach(y=>years.add(Number(y)));
+  Object.keys(importOps).forEach(y=>years.add(Number(y)));
+
+  Array.from(years).filter(y=>!isNaN(y)).sort((a,b)=>b-a).forEach(y=>{
+    const yk = String(y);
+    MONTHS.forEach((mk,mi)=>{
+      const imports = (importOps[yk]||{})[mk] || [];
+      if(imports.length){
+        // Mois importé : les opérations individuelles remplacent le mois agrégé
+        imports.forEach(o=>out.push({
+          year:y, mk, mi, date:o.date||'', label:o.label||o.sub||'',
+          cat:catCanon(o.cat), sub:o.sub||'', type:o.type==='revenu'?'revenu':'depense',
+          amount:o.amount||0, compte:'commun', ref:{kind:'import', id:o.id},
+        }));
+      } else {
+        const m = monthByKeyFor(y, mk);
+        (m.depenses||[]).forEach(c=>{
+          // Certaines lignes n'ont pas de détail : on indexe le total de la catégorie
+          const hasItems = !!(c.items && c.items.length);
+          if(!hasItems && !parseAmount(c.total)) return;   // ligne vide (total 0)
+          const items = hasItems ? c.items : [{ nom:catCanon(c.categorie), montant:c.total }];
+          items.forEach(it=>out.push({
+            year:y, mk, mi, date:'', label:it.nom||'', cat:catCanon(c.categorie), sub:'',
+            type:'depense', amount:parseAmount(it.montant), compte:'commun', ref:null, agg:true,
+          }));
+        });
+        (m.revenus||[]).forEach(r=>out.push({
+          year:y, mk, mi, date:'', label:r.nom + (r.detail ? ' · ' + r.detail : ''),
+          cat:srcCanon(r.nom), sub:'', type:'revenu', amount:parseAmount(r.montant),
+          compte:'commun', ref:null, agg:true,
+        }));
+      }
+      // Livret Bourso+ (relevés importés)
+      const em = epargneMonthOf(y, mk);
+      (em.operations||[]).forEach((o,idx)=>out.push({
+        year:y, mk, mi, date:o.date||'', label:o.label||'', cat:o.cat||'', sub:'',
+        type:o.type==='revenu'?'revenu':'depense', amount:o.montant||0,
+        compte:'livret', ref:{kind:'livret', idx},
+      }));
+      // Saisies manuelles, sur les deux comptes
+      opsOfYear(y, mk).forEach((o,i)=>out.push({
+        year:y, mk, mi, date:o.date||'', label:o.label||o.sub||'',
+        cat:catCanon(o.cat), sub:o.sub||'', type:o.type==='revenu'?'revenu':'depense',
+        amount:o.amount||0, compte:o.compte||'commun', ref:{kind:'user', i},
+      }));
+    });
+  });
+  return out;
+}
+
+function opSearchHaystack(o){
+  return norm([o.label, o.cat, o.sub, o.mk, MONTHS_FR[o.mi], o.year, o.date].join(' '));
+}
+/* Recherche : texte libre (libellé, catégorie, sous-catégorie, mois, date) ou montant */
+function opMatchesQuery(o, q){
+  if(!q) return true;
+  const qn = norm(q);
+  const hay = opSearchHaystack(o);
+  if(hay.includes(qn)) return true;
+  // variantes « & » / « et » (Auto & Moto ↔ auto moto)
+  const hayKey = catKey(hay), qKey = catKey(q);
+  if(qKey && hayKey.includes(qKey)) return true;
+  const qa = String(q).replace(/[\s€]/g,'').replace('.',',');
+  if(!qa) return false;
+  const amt = fmt(Math.abs(o.amount)).replace(/[\s\u00A0]/g,'').replace('.',',');
+  return amt.includes(qa.replace(/,0+$/,''));
+}
+
+function openSearch(){
+  searchIndex = buildSearchIndex();
+  // Années disponibles
+  const years = Array.from(new Set(searchIndex.map(o=>o.year))).sort((a,b)=>b-a);
+  const ys = document.getElementById('searchYear');
+  const prevYear = ys.value;
+  ys.innerHTML = '<option value="tous">Toutes</option>' + years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  ys.value = years.includes(Number(prevYear)) ? prevYear : 'tous';
+  document.getElementById('searchModal').classList.remove('hidden');
+  const inp = document.getElementById('searchInput');
+  inp.value = '';
+  runSearch();
+  inp.focus();
+}
+
+function closeSearch(){
+  document.getElementById('searchModal').classList.add('hidden');
+  searchResults = [];
+}
+
+function runSearch(){
+  const q = document.getElementById('searchInput').value.trim();
+  const acc = document.getElementById('searchCompte').value;
+  const typ = document.getElementById('searchType').value;
+  const yr = document.getElementById('searchYear').value;
+  const all = searchIndex.filter(o=>
+    (acc==='tous' || o.compte===acc) &&
+    (typ==='tous' || o.type===typ) &&
+    (yr==='tous' || String(o.year)===yr) &&
+    opMatchesQuery(o, q)
+  );
+  searchResults = all.slice(0, SEARCH_MAX);
+  renderSearchResults(q, all.length);
+}
+
+function renderSearchResults(q, total){
+  const box = document.getElementById('searchResults');
+  const cnt = document.getElementById('searchCount');
+  if(cnt){
+    cnt.textContent = !searchIndex.length ? 'Aucune opération enregistrée.'
+      : (total === 0 ? 'Aucun résultat.'
+         : `${total} opération${total>1?'s':''} trouvée${total>1?'s':''}`
+           + (total > searchResults.length ? ` · les ${searchResults.length} plus récentes sont affichées` : ''));
+  }
+  if(!searchResults.length){
+    box.innerHTML = `<div class="muted" style="font-size:13px;padding:14px">${q ? 'Aucune opération ne correspond à « '+e(q)+' ».' : 'Aucune opération à afficher.'}</div>`;
+    return;
+  }
+  box.innerHTML = searchResults.map((o,i)=>{
+    const dateTxt = o.date || (MONTHS_FR[o.mi] + ' ' + o.year);
+    const sign = o.type==='revenu' ? '+' : '−';
+    const cls = o.type==='revenu' ? 'pos' : 'neg';
+    const tag = o.compte==='livret' ? '<span class="account-tag livret">Livret</span>' : '<span class="account-tag">Commun</span>';
+    return `<div class="row">
+      <span class="s-label">
+        <span class="muted op-date">${e(dateTxt)}</span>· ${e(o.label)||'—'}
+        <span class="s-cat"> · ${e(o.cat)}${o.sub?' › '+e(o.sub):''}${o.agg?' · total du mois':''}</span>
+      </span>
+      <span class="s-right">${tag}
+        <span class="money ${cls}">${sign} ${cmoney(Math.abs(o.amount))}</span>
+        <button type="button" class="btn ghost small" data-goto="${i}">Voir</button>
+      </span>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>gotoSearchResult(+b.dataset.goto));
+}
+
+/* Ouvre le mois correspondant à un résultat (et l'opération si elle est éditable) */
+function gotoSearchResult(i){
+  const r = searchResults[i];
+  if(!r) return;
+  state.year = r.year;
+  state.month = r.mi;
+  state.account = r.compte;
+  BASE = yearMonths(state.year);
+  setYearMeta();
+  closeSearch();
+  switchTab('months');
+  const seg = document.getElementById('monthAccountSeg');
+  if(seg) seg.querySelectorAll('.seg').forEach(b=>b.classList.toggle('active', b.dataset.account===state.account));
+  if(r.ref) openRefEdit(r.ref, r.mk);
+}
+
 /* ---------- Import des relevés Boursorama (compte commun + Livret) ---------- */
 
 /* Applique les données corrigées par import PAR-DESSUS data.js / data-epargne.js.
@@ -2782,6 +2945,21 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   document.getElementById('prevYear').onclick=()=>changeYear(-1);
   document.getElementById('nextYear').onclick=()=>changeYear(1);
   document.getElementById('btnAdd').onclick=openModal;
+  /* Recherche d'opérations */
+  document.getElementById('btnSearch').onclick=openSearch;
+  document.getElementById('searchClose').onclick=closeSearch;
+  document.getElementById('searchDone').onclick=closeSearch;
+  document.getElementById('searchModal').addEventListener('click', ev=>{
+    if(ev.target === document.getElementById('searchModal')) closeSearch();
+  });
+  document.getElementById('searchInput').addEventListener('input', runSearch);
+  document.getElementById('searchInput').addEventListener('keydown', ev=>{
+    if(ev.key==='Enter'){ ev.preventDefault(); if(searchResults.length) gotoSearchResult(0); }
+    if(ev.key==='Escape'){ ev.preventDefault(); closeSearch(); }
+  });
+  ['searchCompte','searchType','searchYear'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', runSearch);
+  });
   document.getElementById('btnImport').onclick=openImportModal;
   document.getElementById('importClose').onclick=closeImportModal;
   document.getElementById('importCancel').onclick=closeImportModal;
