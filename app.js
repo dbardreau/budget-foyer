@@ -427,6 +427,20 @@ function isBaseEpargne(cat){
   return k==='mouvements internes debiteurs' || k==="depenses d'epargne";
 }
 function isEpargneOp(o){ return !!(o && (isBaseEpargne(o.cat) || isBaseEpargne(o.categorie))); }
+/* Opération marquée « hors budget » (gros mouvement) : elle reste comptée dans
+   les dépenses/revenus et les totaux, mais est écartée de la comparaison au
+   budget (référence ET dépensé de l'onglet Budget). */
+function isHorsBudget(o){ return !!(o && o.horsBudget===true); }
+/* Y a-t-il au moins une opération marquée « hors budget » (toutes années) ? */
+function hasHorsBudgetOps(){
+  for(const y in userOps) for(const mk in userOps[y]) for(const o of userOps[y][mk]) if(isHorsBudget(o)) return true;
+  for(const y in importOps) for(const mk in importOps[y]) for(const o of importOps[y][mk]) if(isHorsBudget(o)) return true;
+  for(const y in epargneData){
+    const arr = epargneData[y]; if(!Array.isArray(arr)) continue;
+    for(const m of arr) if(m && Array.isArray(m.operations)) for(const o of m.operations) if(isHorsBudget(o)) return true;
+  }
+  return false;
+}
 
 /* Somme des « mouvements internes débiteurs » + « dépenses d'épargne » du
    compte commun pour un mois donné (base + opérations saisies).
@@ -850,7 +864,7 @@ function commonRevenueGroups(year, mk){
     if(!map[k]) map[k] = {label:catC, items:[], total:0, user:[]};
     if(!map[k].user) map[k].user=[];
     map[k].total = addAmounts(map[k].total, o.amount);
-    map[k].user.push({label:o.label, amount:o.amount, i, compte:o.compte||'commun'});
+    map[k].user.push({label:o.label, amount:o.amount, i, compte:o.compte||'commun', horsBudget:isHorsBudget(o)});
   });
   return Object.values(map).sort((a,b)=>b.total-a.total);
 }
@@ -879,7 +893,7 @@ function livretRevenueGroups(year, mk, externalOnly){
     if(!map[k]) map[k] = {label:catC, items:[], total:0, user:[]};
     if(!map[k].user) map[k].user=[];
     map[k].total = addAmounts(map[k].total, o.amount);
-    map[k].user.push({label:o.label, amount:o.amount, i, compte:'livret'});
+    map[k].user.push({label:o.label, amount:o.amount, i, compte:'livret', horsBudget:isHorsBudget(o)});
   });
   return Object.values(map).sort((a,b)=>b.total-a.total);
 }
@@ -905,9 +919,10 @@ function renderRevenueGroups(groups, mk){
     const items = (c.items||[]).map(r=>`
       <div class="row"><span class="muted">${e(r.detail)||'—'}</span><span class="money" style="color:${col}">${fmt(r.amount)} €</span></div>`).join('');
     const user = (c.user||[]).map(u=>`
-      <div class="row" style="color:var(--accent)">
+      <div class="row ${u.horsBudget?'hb-row':''}" style="color:var(--accent)">
         <span>${e(u.label)||'Ajout manuel'}</span>
         <div style="display:flex;gap:8px;align-items:center">
+          <label class="hb-check" title="Gros mouvement : reste dans vos revenus, mais est écarté du budget"><input type="checkbox" data-hu="${u.i}" ${u.horsBudget?'checked':''}><span>hors budget</span></label>
           <span class="money">+${fmt(u.amount)} €</span>
           <button class="btn ghost small" data-ru="${u.i}" style="color:var(--accent)">Modifier</button>
           <button class="btn ghost small" data-rd="${u.i}" style="color:var(--accent)">Suppr.</button>
@@ -924,6 +939,9 @@ function renderRevenueGroups(groups, mk){
   box.querySelectorAll('[data-ru]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); openRefEdit({kind:'user', i:+b.dataset.ru}, mk); });
   box.querySelectorAll('[data-rd]').forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation();
     if(confirm('Supprimer ce revenu ?')){ removeRefOp({kind:'user', i:+b.dataset.rd}, mk); }
+  });
+  box.querySelectorAll('[data-hu]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{ toggleHorsBudget({kind:'user', i:+cb.dataset.hu}, cb.checked, mk); });
   });
 }
 
@@ -1124,7 +1142,7 @@ function buildExpenseSections(acc, mk){
         if(o.type!=='depense') return;
         if(accNorm==='tous' && isEpargneCatKey(norm(o.cat))) return;
         put(o.cat||'Autre', o.sub||'Opérations', o.amount,
-          {label:o.label, date:o.date, amount:o.amount, compte:'commun', ref:{kind:'import', id:o.id}});
+          {label:o.label, date:o.date, amount:o.amount, compte:'commun', horsBudget:isHorsBudget(o), ref:{kind:'import', id:o.id}});
       });
     } else {
       const baseMonth = monthByKeyFor(year, mk);
@@ -1141,7 +1159,7 @@ function buildExpenseSections(acc, mk){
       if(o.type!=='depense') return;
       if(accNorm==='tous' && isEpargneCatKey(norm(o.cat))) return;
       put(o.cat||'Autre', o.sub||'Opérations', o.amount,
-        {label:o.label, date:o.date||'', amount:o.amount, compte:'commun', ref:{kind:'user', i}});
+        {label:o.label, date:o.date||'', amount:o.amount, compte:'commun', horsBudget:isHorsBudget(o), ref:{kind:'user', i}});
     });
   }
 
@@ -1152,14 +1170,14 @@ function buildExpenseSections(acc, mk){
       if(o.type!=='depense') return;
       if(accNorm==='tous' && isInterne(o)) return;
       put(o.cat||'Autre', 'Opérations', o.montant||0,
-        {label:o.label, date:o.date||'', amount:o.montant||0, compte:'livret', ref:{kind:'livret', idx}});
+        {label:o.label, date:o.date||'', amount:o.montant||0, compte:'livret', horsBudget:isHorsBudget(o), ref:{kind:'livret', idx}});
     });
     opsOfYear(year, mk).forEach((o,i)=>{
       if(o.type!=='depense') return;
       if((o.compte||'commun')!=='livret') return;
       if(accNorm==='tous' && isInterne(o)) return;
       put(o.cat||'Autre', 'Opérations', o.amount,
-        {label:o.label, date:o.date||'', amount:o.amount, compte:'livret', ref:{kind:'user', i}});
+        {label:o.label, date:o.date||'', amount:o.amount, compte:'livret', horsBudget:isHorsBudget(o), ref:{kind:'user', i}});
     });
   }
   return sections;
@@ -1178,11 +1196,15 @@ function renderExpenseTree(sections, mk){
           ? `<button class="btn ghost small" data-act="e" data-ref='${JSON.stringify(r.ref)}'>Modifier</button>
              <button class="btn ghost small" data-act="d" data-ref='${JSON.stringify(r.ref)}'>Suppr.</button>`
           : '';
+        const hb = (!r.agg && r.ref)
+          ? `<label class="hb-check" title="Gros mouvement : reste dans vos dépenses, mais est écarté de la comparaison au budget"><input type="checkbox" data-hb='${JSON.stringify(r.ref)}' ${r.horsBudget?'checked':''}><span>hors budget</span></label>`
+          : '';
         const tag = r.compte==='livret' ? `<span class="account-tag livret">Livret</span>` : '';
-        return `<div class="row op-row">
+        const moneyCls = r.horsBudget ? 'style="color:var(--muted)"' : 'style="color:var(--danger)"';
+        return `<div class="row op-row ${r.horsBudget?'hb-row':''}">
           <span class="sub-op-label">${r.date?`<span class="muted op-date">${e(r.date)}</span>· `:''}${e(r.label)||'—'}</span>
-          <div style="display:flex;gap:8px;align-items:center">${tag}
-            <span class="money" style="color:var(--danger)">${ngfmt(r.amount)}</span>${actions}
+          <div style="display:flex;gap:8px;align-items:center">${hb}${tag}
+            <span class="money" ${moneyCls}>${ngfmt(r.amount)}</span>${actions}
           </div>
         </div>`;
       }).join('');
@@ -1207,6 +1229,13 @@ function renderExpenseTree(sections, mk){
     b.onclick = (ev)=>{ ev.stopPropagation();
       if(b.dataset.act==='e') openRefEdit(ref, mk); else removeRefOp(ref, mk);
     };
+  });
+  box.querySelectorAll('[data-hb]').forEach(cb=>{
+    cb.addEventListener('change', (ev)=>{
+      ev.stopPropagation();
+      const ref = JSON.parse(cb.dataset.hb);
+      toggleHorsBudget(ref, cb.checked, mk);
+    });
   });
 }
 function ngfmt(n){ return (n<0? '−':'− ') + fmt(Math.abs(n)) + ' €'; }
@@ -1240,6 +1269,31 @@ function removeRefOp(ref, mk){
 }
 function renderExpenses(mk){ renderExpenseTree(buildExpenseSections(state.account||'commun', mk), mk); }
 
+/* Active / désactive le drapeau « hors budget » d'une opération, selon son
+   origine (user = saisie manuelle, import = relevé compte commun, livret =
+   relevé Livret). Persiste puis rafraîchit la vue. */
+function toggleHorsBudget(ref, val, mk){
+  const year = state.year;
+  if(ref.kind==='user'){
+    const arr = oy(year)[mk];
+    if(arr && arr[ref.i]) arr[ref.i].horsBudget = val;
+    saveOps();
+  } else if(ref.kind==='import'){
+    const arr = (importOps[year]||{})[mk]||[];
+    const op = arr.find(x=>x.id===ref.id);
+    if(op) op.horsBudget = val;
+    saveImportMonthFromOps(year, mk);
+  } else if(ref.kind==='livret'){
+    const mi = MONTHS.indexOf(mk);
+    const m = epargneData[String(year)] && epargneData[String(year)][mi];
+    const op = m && m.operations ? m.operations[ref.idx] : null;
+    if(op){ op.horsBudget = val; saveEpargne(); }
+  }
+  renderMonth();
+  renderBudgetMonth();
+  showToast(val ? 'Opération écartée du budget ✔' : 'Opération de nouveau comptée dans le budget.');
+}
+
 /* ============ BUDGET ============
    La page Budget est calculée AUTOMATIQUEMENT à partir de vos dépenses
    réelles (données de base + vos ajouts manuels, toutes années).
@@ -1268,9 +1322,10 @@ function prevYearWithData(year){
 }
 
 /* Totaux dépenses par catégorie (commun + Livret, hors virements internes) */
-function catTotalsFor(year, monthNames){
+function catTotalsFor(year, monthNames, opts){
   const monthsArr = yearMonths(year);
   const opsMap = userOps[String(year)] || {};
+  const excludeHB = !!(opts && opts.excludeHorsBudget);
   const map = {};
   monthNames.forEach(mk=>{
     const month = monthsArr.find(m=>m.mois===mk) || emptyMonth(mk);
@@ -1283,11 +1338,23 @@ function catTotalsFor(year, monthNames){
       if(o.type!=='depense') return;
       if((o.compte||'commun')!=='commun') return;
       if(isEpargneOp(o)) return; // épargne / virements internes non réels
+      if(excludeHB && isHorsBudget(o)) return; // gros mouvement écarté du budget
       const k = canonKey(o.cat); if(!map[k]) map[k]={total:0,label:catCanon(o.cat)};
       map[k].total = addAmounts(map[k].total, o.amount);
     });
+    // Les opérations importées du compte commun sont agrégées dans le mois de
+    // base : on les retire du budget si elles sont marquées « hors budget ».
+    if(excludeHB){
+      ((importOps[String(year)]||{})[mk]||[]).forEach(o=>{
+        if(o.type!=='depense') return;
+        if(!isHorsBudget(o)) return;
+        const k = canonKey(o.cat);
+        if(map[k]) map[k].total = addAmounts(map[k].total, -o.amount);
+      });
+    }
     epargneOps(year, mk).forEach(o=>{
       if(o.type!=='depense' || isInterne(o)) return;
+      if(excludeHB && isHorsBudget(o)) return; // gros mouvement écarté du budget
       const amt = o.montant || o.amount || 0;
       const k = canonKey(o.cat); if(!map[k]) map[k]={total:0,label:catCanon(o.cat)};
       map[k].total = addAmounts(map[k].total, amt);
@@ -1326,7 +1393,7 @@ function budgetReference(){
   const usePrev = refYear !== year;
   const nAct = activeMonthsFor(refYear).length;
   return { year, refYear, usePrev, nAct,
-           refByCat: catTotalsFor(refYear, MONTHS.slice()),
+           refByCat: catTotalsFor(refYear, MONTHS.slice(), {excludeHorsBudget:true}),
            nRef: nAct || 12 };
 }
 
@@ -1334,7 +1401,7 @@ function renderBudget(){
   const year = state.year;
   const { refByCat, refYear, usePrev, nRef, nAct: refAct } = budgetReference();
   const curAct = activeMonthsFor(year);                // mois renseignés de l'année affichée
-  const curByCat = catTotalsFor(year, MONTHS.slice());  // réel de l'année affichée
+  const curByCat = catTotalsFor(year, MONTHS.slice(), {excludeHorsBudget:true});  // réel de l'année affichée
   const nCur = curAct.length || 12;
 
   // Union des catégories (catégories connues + présentes dans les données)
@@ -1358,9 +1425,12 @@ function renderBudget(){
   const note = document.getElementById('budgetNote');
   const refTxt = refAct ? `moyenne des ${refAct} mois renseignés de ${refYear}` : `aucune donnée sur ${refYear}`;
   const scopeTxt = `compte commun + Livret Bourso+, tous mouvements (virements internes et épargne inclus)`;
+  const hbNote = hasHorsBudgetOps()
+    ? ' Les opérations cochées « hors budget » sont écartées de cette comparaison (elles restent dans vos dépenses).'
+    : '';
   if(note) note.textContent = usePrev
-    ? `Budget calculé automatiquement d'après votre consommation réelle (${scopeTxt}). La colonne « Budget » = ${refTxt} ; « Réel » = moyenne des ${curAct.length} mois renseignés de ${year}.`
-    : `Budget calculé automatiquement d'après votre consommation réelle (${scopeTxt}) : ${refTxt}. Il gagnera en pertinence dès qu'une année antérieure existera (créez 2027 avec ‹ › : elle servira de référence pour les années suivantes).`;
+    ? `Budget calculé automatiquement d'après votre consommation réelle (${scopeTxt}). La colonne « Budget » = ${refTxt} ; « Réel » = moyenne des ${curAct.length} mois renseignés de ${year}.${hbNote}`
+    : `Budget calculé automatiquement d'après votre consommation réelle (${scopeTxt}) : ${refTxt}. Il gagnera en pertinence dès qu'une année antérieure existera (créez 2027 avec ‹ › : elle servira de référence pour les années suivantes).${hbNote}`;
 
   const kpis = [
     {cls:'blue',  label:'Budget de référence / mois', val:cmoney(totalRef),  sub:'moyenne réelle '+refYear+' · '+refAct+' mois'},
@@ -1396,7 +1466,7 @@ function renderBudgetMonth(){
   const elTitle = document.getElementById('budgetMonthTitle');
   if(elTitle) elTitle.textContent = title;
 
-  const curByCat = catTotalsFor(year, [mk]);   // dépensé ce mois (base + ajouts)
+  const curByCat = catTotalsFor(year, [mk], {excludeHorsBudget:true});   // dépensé ce mois (base + ajouts)
 
   // Union des catégories
   const seen = {}; const keys = [];
@@ -1419,8 +1489,11 @@ function renderBudgetMonth(){
   const restTotal = budgetM - spentM;
 
   const note = document.getElementById('budgetMonthNote');
+  const hbNote = hasHorsBudgetOps()
+    ? ' Les opérations cochées « hors budget » de ce mois ne comptent pas dans « Dépensé » (ce reste affiché correspond aux dépenses hors gros mouvements).'
+    : '';
   if(note) note.textContent = refAct
-    ? `Votre budget mensuel de référence (moyenne des ${refAct} mois renseignés de ${refYear}) comparé à ce que vous avez dépensé en ${MONTHS_FR[state.month]} ${year}, Livret Bourso+ inclus, virements internes et épargne compris.`
+    ? `Votre budget mensuel de référence (moyenne des ${refAct} mois renseignés de ${refYear}) comparé à ce que vous avez dépensé en ${MONTHS_FR[state.month]} ${year}, Livret Bourso+ inclus, virements internes et épargne compris.${hbNote}`
     : `Aucune donnée de référence sur ${refYear} : ajoutez des dépenses pour voir apparaître votre budget mensuel.`;
 
   const kpis = [
@@ -1782,6 +1855,7 @@ function openEdit(mk, i){
   const lbl = (op.label && op.label!==op.sub) ? op.label : '';
   document.getElementById('fLabel').value = lbl||'';
   document.getElementById('fAmount').value = op.amount;
+  document.getElementById('fHorsBudget').checked = isHorsBudget(op);
   document.getElementById('modal').classList.remove('hidden');
 }
 /* Remplit la modale pour éditer une opération du compte commun issue d'un import */
@@ -1807,6 +1881,7 @@ function openEditImport(mk, id){
   const lbl = (op.label && op.label!==op.sub) ? op.label : '';
   document.getElementById('fLabel').value = lbl||'';
   document.getElementById('fAmount').value = op.amount;
+  document.getElementById('fHorsBudget').checked = isHorsBudget(op);
   document.getElementById('modal').classList.remove('hidden');
 }
 /* Remplit la modale pour éditer une opération du relevé Livret */
@@ -1831,6 +1906,7 @@ function openEditLivret(mk, idx){
   const lbl = (op.label && op.label!==op.cat) ? op.label : '';
   document.getElementById('fLabel').value = lbl||'';
   document.getElementById('fAmount').value = op.montant;
+  document.getElementById('fHorsBudget').checked = isHorsBudget(op);
   document.getElementById('modal').classList.remove('hidden');
 }
 function setFormAccount(acc){
@@ -3028,14 +3104,15 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     const sub = document.getElementById('fSub').value;
     const label = document.getElementById('fLabel').value.trim();
     const amount = parseFloat(document.getElementById('fAmount').value);
+    const horsBudget = document.getElementById('fHorsBudget').checked;
     if(!amount||amount<=0){ showToast('Montant invalide.','err'); return; }
-    const payload = {type, cat, sub, label:label||sub||(type==='depense'?'Dépense':'Revenu'), amount:Math.round(amount*100)/100, compte};
+    const payload = {type, cat, sub, label:label||sub||(type==='depense'?'Dépense':'Revenu'), amount:Math.round(amount*100)/100, compte, horsBudget};
     const emk = (editingKey && editingKey.mk) || mk;   // mois d'origine (édition) ou cible (ajout)
     if(editingSrc==='import' && editingKey){
       const ey = editingKey.year;
       const arr = (importOps[ey]||{})[emk]||[];
       const op = arr.find(x=>x.id===editingKey.id);
-      if(op){ op.type=payload.type; op.cat=payload.cat; op.sub=payload.sub; op.label=payload.label; op.amount=payload.amount; }
+      if(op){ op.type=payload.type; op.cat=payload.cat; op.sub=payload.sub; op.label=payload.label; op.amount=payload.amount; op.horsBudget=payload.horsBudget; }
       saveImportMonthFromOps(ey, emk);
     } else if(editingSrc==='livret' && editingKey){
       const ey = editingKey.year;
@@ -3044,6 +3121,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       if(m && m.operations && m.operations[editingKey.idx]){
         const op = m.operations[editingKey.idx];
         op.type=payload.type; op.cat=payload.cat; op.label=payload.label; op.montant=payload.amount;
+        op.horsBudget=payload.horsBudget;
         op.interne = isInterneCat(op); if('sous' in op) delete op.sous;
       }
       recomputeLivretSoldes(ey, mi2);

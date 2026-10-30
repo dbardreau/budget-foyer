@@ -295,6 +295,12 @@
         <label for="fAmount">Montant (€)</label>
         <input id="fAmount" type="number" step="0.01" min="0" placeholder="0,00">
       </div>
+      <div class="field">
+        <label class="hb-check-label" title="Le gros mouvement reste compté dans vos dépenses/revenus, mais ne perturbe pas la comparaison au budget">
+          <input type="checkbox" id="fHorsBudget">
+          <span>Ne pas comptabiliser dans le budget (gros mouvement)</span>
+        </label>
+      </div>
       <div class="modal-foot">
         <button type="button" id="formCancel" class="btn ghost">Annuler</button>
         <button type="submit" class="btn primary">Enregistrer</button>
