@@ -115,11 +115,15 @@ const CAT_ALIASES = {
   'loisirs':'Loisirs et sorties',
   'impots taxe':'Impôts et taxes',
   'mouvement interne debiteur':'Mouvements internes débiteurs',
+  'mouvements internes':'Mouvements internes débiteurs',
 };
-/* Libellé canonique affiché : ramène une variante de libellé vers le label standard de CATS */
+/* Libellé canonique affiché : ramène une variante de libellé vers la clé
+   standard de CATS. On renvoie la clé technique (et non le libellé court) pour
+   que toutes les variantes produisent exactement la même chaîne, et donc une
+   seule catégorie à l'écran. */
 function catCanon(cat){
   const direct = CATS.find(c => catKey(c.key)===catKey(cat));
-  if(direct) return direct.label;
+  if(direct) return direct.key;
   return CAT_ALIASES[catKey(cat)] || cat;
 }
 /* Clé de regroupement : toujours dérivée du libellé canonique pour que toutes les
@@ -345,23 +349,37 @@ function baseSomme(month){
 function opsOfYear(year, mk){ return (userOps[String(year)]||{})[mk] || []; }
 /* Opérations du compte commun uniquement (les anciennes n'ont pas de champ compte) */
 function commonOps(list){ return list.filter(o=>(o.compte||'commun')==='commun'); }
-function isInterne(o){ return !!(o && (o.interne===true || /^mouvements? internes?/.test(norm(o.cat)))); }
+/* Virements entre comptes et épargne : COMPTÉS dans les totaux depuis le
+   30/10/2026 (les chiffres du site doivent coller aux relevés bancaires :
+   un virement sort d'un compte et entre dans l'autre).
+   Passer INCLUDE_INTERNES à false rétablit l'ancien comportement, qui les
+   retirait du budget consolidé du foyer. */
+const INCLUDE_INTERNES = true;
 
-/* Épargne et virements internes du foyer : pas des dépenses réelles.
-   Les « Mouvements internes débiteurs » sont des transferts vers un autre de
-   nos comptes (Bourso+) et les « Dépenses d'épargne » une mise de côté.
-   On les exclut du budget consolidé du foyer (Accueil, vue « Tous », budgets,
-   graphiques, prévisionnel), pas des vues individuelles de compte.
-   `isBaseEpargne` teste une catégorie de la base (data.js), `isEpargneOp`
-   teste une opération saisie. */
+function isInterne(o){
+  if(INCLUDE_INTERNES) return false;
+  return isInterneCat(o);
+}
+/* Détection « brute » d'un mouvement interne (indépendante de INCLUDE_INTERNES) :
+   sert à étiqueter les opérations enregistrées, pas à les exclure. */
+function isInterneCat(o){
+  return !!(o && (o.interne===true || /^mouvements? internes?/.test(norm(o.cat))));
+}
+
+/* `isBaseEpargne` teste une catégorie de la base (data.js), `isEpargneOp`
+   teste une opération saisie. Les « Mouvements internes débiteurs » sont des
+   transferts vers un autre de nos comptes (Bourso+) et les « Dépenses
+   d'épargne » une mise de côté : elles ne sont plus exclues des totaux. */
 function isBaseEpargne(cat){
+  if(INCLUDE_INTERNES) return false;
   const k = norm(cat);
   return k==='mouvements internes debiteurs' || k==="depenses d'epargne";
 }
 function isEpargneOp(o){ return !!(o && (isBaseEpargne(o.cat) || isBaseEpargne(o.categorie))); }
 
 /* Somme des « mouvements internes débiteurs » + « dépenses d'épargne » du
-   compte commun pour un mois donné (base + opérations saisies). */
+   compte commun pour un mois donné (base + opérations saisies).
+   Avec INCLUDE_INTERNES, ces montants sont comptés : la fonction renvoie 0. */
 function epargneTransfMonthly(mk){
   const month = yearMonths(state.year).find(m=>m.mois===mk) || emptyMonth(mk);
   let t = 0;
@@ -585,14 +603,12 @@ function yearlyTotals(){
   BASE.forEach(m=>{ tot.rev+=baseRevTotal(m); tot.dep+=baseDepTotal(m); });
   // ajouts du compte commun
   MONTHS.forEach(mk => { const w = monthWithOps(mk); tot.rev=addAmounts(tot.rev,w.revAdd); tot.dep=addAmounts(tot.dep,w.depAdd); });
-  // mouvements réels du Livret (hors virements entre comptes)
+  // mouvements du Livret (virements internes et épargne compris)
   const ep = epargneExternalTotals(state.year);
   tot.rev = addAmounts(tot.rev, ep.rev);
   tot.dep = addAmounts(tot.dep, ep.dep);
-  // l'épargne et les virements internes du compte commun ne sont pas des dépenses réelles du foyer
-  let epargne = 0;
-  MONTHS.forEach(mk=> epargne = addAmounts(epargne, epargneTransfMonthlyFor(state.year, mk)));
-  tot.dep = addAmounts(tot.dep, -epargne);
+  // l'épargne et les virements internes du compte commun sont désormais comptés
+  // (INCLUDE_INTERNES) : plus aucune correction à appliquer ici.
   return tot;
 }
 function renderOverview(){
@@ -679,7 +695,7 @@ function renderMonth(){
       {cls:'violet', label:'Solde du Livret', val:soldeTxt, sub:soldeSub},
     ];
     if(livret.soldeSource==='releve'){
-      note = "Vue du Livret Bourso+ : les virements entre comptes figurent dans les entrées/sorties du compte, mais sont exclus du budget du foyer.";
+      note = "Vue du Livret Bourso+ : tous les mouvements du relevé sont comptés, y compris les virements entre vos comptes.";
     } else if(livret.soldeSource==='estime'){
       const fromTxt = livret.soldeAnchor
         ? 'du dernier relevé connu (fin ' + MONTHS_FR[MONTHS.indexOf(livret.soldeAnchor)] + ')'
@@ -691,16 +707,15 @@ function renderMonth(){
     }
   } else if(acc==='tous'){
     const rev = addAmounts(common.revTotal, extRev);
-    // le transfert vers le Livret et l'épargne ne sont pas des dépenses réelles du foyer
-    const epargne = epargneTransfMonthly(mk);
-    const dep = addAmounts(addAmounts(common.depTotal, -epargne), extDep);
+    // virements internes et épargne : comptés (un mouvement = une entrée + une sortie)
+    const dep = addAmounts(common.depTotal, extDep);
     kpis = [
-      {cls:'blue',  label:'Revenus', val:cmoney(rev), sub:'commun + Livret, hors virements internes'},
-      {cls:'red',   label:'Dépenses', val:cmoney(dep), sub:'hors épargne et virements internes'},
+      {cls:'blue',  label:'Revenus', val:cmoney(rev), sub:'commun + Livret, tous mouvements'},
+      {cls:'red',   label:'Dépenses', val:cmoney(dep), sub:'épargne et virements internes inclus'},
       {cls: (rev-dep)<0?'red':'green', label:'Solde du mois', val:cmoney(addAmounts(rev,-dep)), sub:'revenus − dépenses'},
       {cls:'violet', label:'Solde du Livret', val:soldeTxt, sub:soldeSub},
     ];
-    note = "Vue consolidée : compte commun + Livret Bourso+. L'épargne et les virements entre comptes (transferts vers le Livret) ne sont pas des dépenses réelles et sont retirés du budget.";
+    note = "Vue consolidée : compte commun + Livret Bourso+. Tous les mouvements des relevés sont comptés, y compris l'épargne et les virements entre vos comptes : un virement apparaît en recette sur le compte qui le reçoit et en dépense sur celui qui l'émet, donc le solde du mois reste exact.";
   } else {
     kpis = [
       {cls:'blue', label:'Revenus', val:cmoney(common.revTotal), sub:common.revAdd?'dont +'+cmoney(common.revAdd)+' (ajouts)':'représentation mensuelle'},
@@ -868,7 +883,7 @@ function expenseTotalsForAcc(year, mk, acc){
   }
   return catTotalsMkFor(year, mk);
 }
-function isEpargneCatKey(k){ return /^mouvements internes debiteurs$|^depenses d'epargne$/.test(k); }
+function isEpargneCatKey(k){ if(INCLUDE_INTERNES) return false; return /^mouvements internes debiteurs$|^depenses d'epargne$/.test(k); }
 function expenseMapFor(acc, mk){ return expenseTotalsForAcc(state.year, mk, acc); }
 
 /* Revenus d'un mois pour un compte donné, normalisés en { clé: { label, total } } */
@@ -1287,7 +1302,7 @@ function renderBudget(){
 
   const note = document.getElementById('budgetNote');
   const refTxt = refAct ? `moyenne des ${refAct} mois renseignés de ${refYear}` : `aucune donnée sur ${refYear}`;
-  const scopeTxt = `compte commun + Livret Bourso+, hors virements entre comptes`;
+  const scopeTxt = `compte commun + Livret Bourso+, tous mouvements (virements internes et épargne inclus)`;
   if(note) note.textContent = usePrev
     ? `Budget calculé automatiquement d'après votre consommation réelle (${scopeTxt}). La colonne « Budget » = ${refTxt} ; « Réel » = moyenne des ${curAct.length} mois renseignés de ${year}.`
     : `Budget calculé automatiquement d'après votre consommation réelle (${scopeTxt}) : ${refTxt}. Il gagnera en pertinence dès qu'une année antérieure existera (créez 2027 avec ‹ › : elle servira de référence pour les années suivantes).`;
@@ -1350,7 +1365,7 @@ function renderBudgetMonth(){
 
   const note = document.getElementById('budgetMonthNote');
   if(note) note.textContent = refAct
-    ? `Votre budget mensuel de référence (moyenne des ${refAct} mois renseignés de ${refYear}) comparé à ce que vous avez dépensé en ${MONTHS_FR[state.month]} ${year}, Livret Bourso+ inclus et virements entre comptes exclus.`
+    ? `Votre budget mensuel de référence (moyenne des ${refAct} mois renseignés de ${refYear}) comparé à ce que vous avez dépensé en ${MONTHS_FR[state.month]} ${year}, Livret Bourso+ inclus, virements internes et épargne compris.`
     : `Aucune donnée de référence sur ${refYear} : ajoutez des dépenses pour voir apparaître votre budget mensuel.`;
 
   const kpis = [
@@ -2668,7 +2683,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       if(m && m.operations && m.operations[editingKey.idx]){
         const op = m.operations[editingKey.idx];
         op.type=payload.type; op.cat=payload.cat; op.label=payload.label; op.montant=payload.amount;
-        op.interne = isInterne(op); if('sous' in op) delete op.sous;
+        op.interne = isInterneCat(op); if('sous' in op) delete op.sous;
       }
       recomputeLivretSoldes(ey, mi2);
     } else if(editingKey){
