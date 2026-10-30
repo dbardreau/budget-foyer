@@ -1312,6 +1312,28 @@ function toggleHorsBudget(ref, val, mk){
   showToast(val ? 'Opération écartée du budget ✔' : 'Opération de nouveau comptée dans le budget.');
 }
 
+/* Vide complètement le mois courant : supprime les opérations saisies (userOps),
+   les opérations et mois importés du compte commun (importOps/importData) et du
+   Livret (epargneImportData), puis recharge pour repartir de la base statique. */
+function clearCurrentMonth(){
+  const year = String(state.year);
+  const mk = MONTHS[state.month];
+  const mon = MONTHS_FR[state.month];
+  if(!confirm('Vider complètement ' + mon + ' ' + year + ' ?\nToutes les opérations de ce mois (importées et saisies, compte commun et Livret) seront supprimées.')) return;
+  if(userOps[year]) delete userOps[year][mk];
+  if(importOps[year]) delete importOps[year][mk];
+  if(importData[year]) delete importData[year][mk];
+  if(epargneImportData[year]) delete epargneImportData[year][mk];
+  showToast('Suppression de ' + mon + ' ' + year + ' en cours…');
+  Promise.all([
+    sbSave('ops', userOps),
+    sbSave('import_ops', importOps),
+    sbSave('import', importData),
+    sbSave('epargne_import', epargneImportData),
+  ]).then(()=>{ location.reload(); })
+    .catch(()=>{ location.reload(); });
+}
+
 /* ============ BUDGET ============
    La page Budget est calculée AUTOMATIQUEMENT à partir de vos dépenses
    réelles (données de base + vos ajouts manuels, toutes années).
@@ -3030,6 +3052,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
   document.getElementById('prevMonth').onclick=()=>{ state.month=(state.month+11)%12; renderMonth(); };
   document.getElementById('nextMonth').onclick=()=>{ state.month=(state.month+1)%12; renderMonth(); };
+  const bClear=document.getElementById('btnClearMonth'); if(bClear) bClear.onclick=clearCurrentMonth;
   const bPM=document.getElementById('prevBudgetMonth'), bNM=document.getElementById('nextBudgetMonth');
   if(bPM) bPM.onclick=()=>{ state.month=(state.month+11)%12; renderBudgetMonth(); };
   if(bNM) bNM.onclick=()=>{ state.month=(state.month+1)%12; renderBudgetMonth(); };
