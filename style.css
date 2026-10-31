@@ -187,8 +187,9 @@ body{
 .chip-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;line-height:1;padding:0}
 .chip-x:hover{color:var(--danger)}
 .subs{line-height:1.9}
-.sub-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:2px 0}
-.sub-row .sub-name{font-size:13px;font-weight:600;min-width:150px}
+.subs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:6px}
+.sub-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+.sub-row .sub-name{font-size:13px;font-weight:600;flex:1 1 auto}
 .sub-move{background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 6px;font-size:12px;cursor:pointer}
 .progress{height:7px;background:#222b3a;border-radius:10px;overflow:hidden;display:flex}
 .progress span{height:100%}

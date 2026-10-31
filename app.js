@@ -2589,7 +2589,7 @@ function renderCatManager(){
         <button type="button" class="btn ghost small" data-del-cat="${ci}">Supprimer</button>
       </div>
       <div class="body">
-        <div class="subs" style="line-height:2">${chips}</div>
+        <div class="subs-grid">${chips}</div>
         <div style="display:flex;gap:8px;margin-top:10px">
           <input class="sub-input" data-cat="${ci}" type="text" placeholder="Ajouter une sous-catégorie…" style="flex:1">
           <button type="button" class="btn ghost small" data-add-sub="${ci}">＋</button>
