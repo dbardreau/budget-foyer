@@ -2012,6 +2012,33 @@ function existingSubLabels(mode, catId){
       });
     });
   });
+  // Opérations importées (compte commun)
+  Object.keys(importOps).forEach(y=>Object.keys(importOps[y]||{}).forEach(mk=>{
+    (importOps[y][mk]||[]).forEach(o=>{
+      if(o.type!==mode) return;
+      if(matchCat(o.cat)) add(o.sub);
+    });
+  }));
+  // Opérations du Livret (épargne)
+  Object.keys(epargneData).forEach(y=>{
+    (epargneData[y]||[]).forEach(m=>{
+      (m.operations||[]).forEach(o=>{
+        if(o.type!==mode) return;
+        if(matchCat(o.cat)) add(o.sub);
+      });
+    });
+  });
+  return out;
+}
+/* Liste TOUTES les sous-catégories réelles d'une catégorie : celles gérées à la
+   main (subcats) + celles réellement présentes dans les opérations (base, saisies
+   manuelles, imports, Livret). `catId` est déjà l'id (clé) de la catégorie. */
+function allSubLabels(mode, catId){
+  const seen = {};
+  const out = [];
+  const add = s => { s=String(s||'').trim(); if(s && !seen[catKey(s)]){ seen[catKey(s)]=1; out.push(s); } };
+  subsOf(catId).forEach(add);
+  existingSubLabels(mode, catId).forEach(add);
   return out;
 }
 function updateSubSelect(){
@@ -2460,6 +2487,78 @@ function restoreCat(mode, i){
   showToast((mode==='depense'?'Catégorie':'Source') + ' restaurée ✔');
 }
 
+/* Ré-affecte toutes les opérations d'une (catégorie, sous-catégorie) vers une autre catégorie. */
+function moveSub(mode, catId, sub, targetId){
+  const srcK = canonKey(catId);
+  const subK = catKey(sub);
+  let changed = false;
+  const touched = new Set();   // mois importés touchés → à reconstruire ("y|mk")
+  const apply = o => {
+    if(o.type!==mode) return;
+    if(canonKey(o.cat)!==srcK) return;
+    if(catKey(o.sub||'')!==subK) return;
+    o.cat = targetId;
+    changed = true;
+  };
+  Object.keys(userOps).forEach(y=>Object.keys(userOps[y]||{}).forEach(mk=>{ (userOps[y][mk]||[]).forEach(apply); }));
+  Object.keys(importOps).forEach(y=>Object.keys(importOps[y]||{}).forEach(mk=>{
+    let changedHere = false;
+    (importOps[y][mk]||[]).forEach(o=>{
+      if(o.type!==mode) return;
+      if(canonKey(o.cat)!==srcK) return;
+      if(catKey(o.sub||'')!==subK) return;
+      o.cat = targetId; changed = true; changedHere = true;
+    });
+    if(changedHere) touched.add(y+'\u0001'+mk);
+  }));
+  Object.keys(epargneData).forEach(y=>{ (epargneData[y]||[]).forEach(m=>{ (m.operations||[]).forEach(apply); }); });
+  if(changed){
+    saveOps();
+    saveKey('import_ops', importOps);
+    saveEpargne();
+    Array.from(touched).forEach(t=>{ const [y,mk]=t.split('\u0001'); saveImportMonthFromOps(y, mk); });
+  }
+  renderCatManager();
+  showToast((changed?changed+' opération(s) déplacée(s) ✔':'Aucune opération déplacée.'));
+}
+/* Supprime une sous-catégorie : ses opérations sont regroupées dans la catégorie
+   parente (sans sous-détail), et elle est retirée de la liste gérée. */
+function deleteSub(mode, catId, sub){
+  const srcK = canonKey(catId);
+  const subK = catKey(sub);
+  let changed = false;
+  const touched = new Set();
+  const apply = o => {
+    if(o.type!==mode) return;
+    if(canonKey(o.cat)!==srcK) return;
+    if(catKey(o.sub||'')!==subK) return;
+    o.sub = '';
+    changed = true;
+  };
+  Object.keys(userOps).forEach(y=>Object.keys(userOps[y]||{}).forEach(mk=>{ (userOps[y][mk]||[]).forEach(apply); }));
+  Object.keys(importOps).forEach(y=>Object.keys(importOps[y]||{}).forEach(mk=>{
+    let changedHere = false;
+    (importOps[y][mk]||[]).forEach(o=>{
+      if(o.type!==mode) return;
+      if(canonKey(o.cat)!==srcK) return;
+      if(catKey(o.sub||'')!==subK) return;
+      o.sub = ''; changed = true; changedHere = true;
+    });
+    if(changedHere) touched.add(y+'\u0001'+mk);
+  }));
+  Object.keys(epargneData).forEach(y=>{ (epargneData[y]||[]).forEach(m=>{ (m.operations||[]).forEach(apply); }); });
+  // Retire aussi de la liste gérée à la main
+  const arr = subsOf(catId);
+  const i = arr.findIndex(x=>catKey(x)===subK);
+  if(i>=0){ arr.splice(i,1); if(arr.length===0) delete subcats[catId]; saveSubcats(); }
+  if(changed){
+    saveOps(); saveKey('import_ops', importOps); saveEpargne(); applyPersistedImports();
+    Array.from(touched).forEach(t=>{ const [y,mk]=t.split('\u0001'); if((importOps[y]||{})[mk] && (importOps[y])[mk].length) saveImportMonthFromOps(y, mk); });
+  }
+  renderCatManager();
+  showToast('Sous-catégorie supprimée ✔');
+}
+
 function renderCatManager(){
   const listBox = document.getElementById('catList');
   document.querySelectorAll('#catModeSeg .seg').forEach(b=>b.classList.toggle('active', b.dataset.catmode===catMode));
@@ -2471,9 +2570,20 @@ function renderCatManager(){
   const removed = removedCats(catMode);
 
   const cards = cats.length ? cats.map((c,ci)=>{
-    const subs = subsOf(c.id);
+    const subs = allSubLabels(catMode, c.id);
+    const others = cats.filter(x=>catKey(x.id)!==catKey(c.id));
+    const othersOptions = others.length
+      ? others.map(x=>`<option value="${e(x.id)}">${e(x.label)}</option>`).join('')
+      : '';
     const chips = subs.length
-      ? subs.map((s,si)=>`<span class="chip">${e(s)} <button type="button" class="chip-x" data-del-sub="${ci}-${si}" title="Supprimer">✕</button></span>`).join(' ')
+      ? subs.map((s,si)=>`<div class="sub-row">
+          <span class="sub-name">${e(s)}</span>
+          <select class="sub-move" data-move-sub="${ci}" data-subidx="${si}" title="Déplacer cette sous-catégorie vers une autre catégorie">
+            <option value="">Déplacer dans…</option>
+            ${othersOptions}
+          </select>
+          <button type="button" class="btn ghost small" data-del-sub="${ci}" data-subidx="${si}" title="Supprimer cette sous-catégorie (opérations regroupées dans la catégorie)">Supprimer</button>
+        </div>`).join(' ')
       : '<span class="muted" style="font-size:12px">Aucune sous-catégorie</span>';
     const tag = c.custom ? ' <span class="muted" style="font-size:11px">personnalisée</span>' : '';
     return `<div class="cat">
@@ -2482,7 +2592,7 @@ function renderCatManager(){
         <button type="button" class="btn ghost small" data-del-cat="${ci}">Supprimer</button>
       </div>
       <div class="body">
-        <div class="subs" style="line-height:1.9">${chips}</div>
+        <div class="subs" style="line-height:2">${chips}</div>
         <div style="display:flex;gap:8px;margin-top:10px">
           <input class="sub-input" data-cat="${ci}" type="text" placeholder="Ajouter une sous-catégorie…" style="flex:1">
           <button type="button" class="btn ghost small" data-add-sub="${ci}">＋</button>
@@ -2512,11 +2622,28 @@ function renderCatManager(){
     restoreCat(catMode, +b.dataset.restoreCat);
   });
   listBox.querySelectorAll('[data-del-sub]').forEach(b=>b.onclick=()=>{
-    const [ci,si]=b.dataset.delSub.split('-').map(Number);
-    const id = allCats(catMode)[ci].id;
-    removeSub(id,si);
-    renderCatManager();
+    const ci = +b.dataset.delSub;
+    const si = +b.dataset.subidx;
+    const c = allCats(catMode)[ci];
+    if(!c) return;
+    const subs = allSubLabels(catMode, c.id);
+    const sub = subs[si];
+    if(sub==null) return;
+    if(!confirm(`Supprimer la sous-catégorie « ${sub} » ?\nSes opérations seront regroupées dans la catégorie « ${c.label} » (sans sous-détail).`)) return;
+    deleteSub(catMode, c.id, sub);
   });
+  listBox.querySelectorAll('[data-move-sub]').forEach(sel=>sel.addEventListener('change',()=>{
+    const target = sel.value;
+    if(!target) return;
+    const ci = +sel.dataset.moveSub;
+    const si = +sel.dataset.subidx;
+    const c = allCats(catMode)[ci];
+    if(!c) return;
+    const sub = allSubLabels(catMode, c.id)[si];
+    if(sub==null) return;
+    sel.value = '';
+    moveSub(catMode, c.id, sub, target);
+  }));
   listBox.querySelectorAll('.sub-input').forEach(inp=>inp.addEventListener('keydown',ev=>{
     if(ev.key==='Enter'){ ev.preventDefault(); commitSub(inp); }
   }));
@@ -3127,12 +3254,6 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   document.getElementById('delCatClose').onclick=()=>{ pendingDelCat=null; delModal.classList.add('hidden'); };
   document.getElementById('delCatCancel').onclick=()=>{ pendingDelCat=null; delModal.classList.add('hidden'); };
   document.getElementById('delCatConfirm').onclick=confirmDeleteCat;
-
-  document.getElementById('btnReset').onclick=()=>{
-    if(confirm('Supprimer toutes vos opérations ajoutées ?')){
-      userOps={}; saveOps(); switchTab(state.tab); showToast('Ajouts supprimés.');
-    }
-  };
 
   document.getElementById('addForm').addEventListener('submit', ev=>{
     ev.preventDefault();
