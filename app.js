@@ -98,6 +98,16 @@ function subsOf(id){ return subcats[id] = subcats[id] || []; }
 function addSub(id,name){ const a=subsOf(id); const n=String(name||'').trim(); if(!n) return null; if(a.some(x=>norm(x)===norm(n))) return false; a.push(n); saveSubcats(); return true; }
 function removeSub(id,i){ subsOf(id).splice(i,1); if(subcats[id].length===0) delete subcats[id]; saveSubcats(); }
 
+/* Règles durables « sous-catégorie → catégorie » : quand tu déplaces une
+   sous-catégorie vers une autre catégorie, la règle est mémorisée (clé: clé
+   canonique du nom de sous-catégorie ; valeur: catégorie de destination).
+   À chaque import, les nouvelles opérations de cette sous-catégorie sont
+   automatiquement placées dans la bonne catégorie (la banque ne réécrase plus).
+   Persistées dans Supabase sous la clé `sub_remap`. */
+let subRemap = {};
+function saveSubRemap(){ saveKey('sub_remap', subRemap); }
+function remapTargetSub(sub){ return subRemap[catKey(sub)] || ''; }
+
 function norm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
 /* Clé canonique d'une catégorie : rend « Auto & Moto », « auto moto », « Voyages & Transports »,
    « Voyages et transports », « Abonnement et téléphonie »… équivalents (insensible & / et / accents) */
@@ -275,6 +285,7 @@ async function initStorage(){
     customCats = (d && Array.isArray(d.custom_cats)) ? d.custom_cats : [];
     customSrc  = (d && Array.isArray(d.custom_src))  ? d.custom_src  : [];
     subcats    = (d && d.subcats && typeof d.subcats==='object' && !Array.isArray(d.subcats)) ? d.subcats : {};
+    subRemap   = (d && d.sub_remap && typeof d.sub_remap==='object' && !Array.isArray(d.sub_remap)) ? d.sub_remap : {};
 
     /* --- Catégories supprimées (standard et personnalisées) --- */
     const rawCats = (d && d.cats_state && typeof d.cats_state==='object' && !Array.isArray(d.cats_state)) ? d.cats_state : {};
@@ -2515,8 +2526,12 @@ function moveSub(mode, catId, sub, targetId){
     saveEpargne();
     Array.from(touched).forEach(t=>{ const [y,mk]=t.split('\u0001'); saveImportMonthFromOps(y, mk); });
   }
+  // Mémorise la règle pour les prochains imports : cette sous-catégorie ira
+  // toujours dans la catégorie de destination, même après un nouvel export.
+  subRemap[subK] = targetId;
+  saveSubRemap();
   renderCatManager();
-  showToast((changed?changed+' opération(s) déplacée(s) ✔':'Aucune opération déplacée.'));
+  showToast((changed?changed+' opération(s) déplacée(s) • ': '') + 'Règle mémorisée : les prochains imports placeront cette sous-catégorie dans « ' + (catLabelOf(mode, targetId)||targetId) + ' ».');
 }
 /* Supprime une sous-catégorie : ses opérations sont regroupées dans la catégorie
    parente (sans sous-détail), et elle est retirée de la liste gérée. */
@@ -2548,6 +2563,8 @@ function deleteSub(mode, catId, sub){
   const arr = subsOf(catId);
   const i = arr.findIndex(x=>catKey(x)===subK);
   if(i>=0){ arr.splice(i,1); if(arr.length===0) delete subcats[catId]; saveSubcats(); }
+  // On oublie la règle mémorisée éventuelle (la sous-catégorie n'est plus redirigée)
+  if(subRemap[subK]){ delete subRemap[subK]; saveSubRemap(); }
   if(changed){
     saveOps(); saveKey('import_ops', importOps); saveEpargne(); applyPersistedImports();
     Array.from(touched).forEach(t=>{ const [y,mk]=t.split('\u0001'); if((importOps[y]||{})[mk] && (importOps[y])[mk].length) saveImportMonthFromOps(y, mk); });
@@ -3097,6 +3114,9 @@ function processImportFiles(fileList){
       perFile.push({ name:s.name, count:fops.length });
       ops = ops.concat(fops);
     }
+    // Applique les règles mémorisées « sous-catégorie → catégorie » : les nouvelles
+    // opérations rejoignent directement la catégorie choisie, la banque ne réécrase pas.
+    ops.forEach(o=>{ const t = remapTargetSub(o.sous); if(t) o.parent = t; });
     const { communs, livrets } = rebuildImportedMonths(ops);
     // Opérations individuelles du compte commun (pour l'accordéon détaillé)
     const io = {};
