@@ -107,6 +107,14 @@ function removeSub(id,i){ subsOf(id).splice(i,1); if(subcats[id].length===0) del
 let subRemap = {};
 function saveSubRemap(){ saveKey('sub_remap', subRemap); }
 function remapTargetSub(sub){ return subRemap[catKey(sub)] || ''; }
+/* Catégorie effective d'une opération : si une règle mémorisée redirige sa
+   sous-catégorie vers une autre catégorie, on utilise la catégorie de destination
+   (surtout pour les mois de base janv→sept, jamais réécrits). Sans règle, on garde
+   la catégorie d'origine. */
+function effectiveCat(cat, sub){
+  const t = remapTargetSub(sub);
+  return t ? String(t) : cat;
+}
 
 function norm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
 /* Clé canonique d'une catégorie : rend « Auto & Moto », « auto moto », « Voyages & Transports »,
@@ -580,10 +588,20 @@ function monthWithOps(mk){ return monthWithOpsFor(state.year, mk); }
 function catTotalsMkFor(year, mk){
   const {month, depOps} = monthWithOpsFor(year, mk);
   const map = {};
-  (month.depenses||[]).forEach(c=>{ map[canonKey(c.categorie)] = {total:parseAmount(c.total), label:catCanon(c.categorie), items:c.items||[]}; });
+  (month.depenses||[]).forEach(c=>{
+    const items = (c.items && c.items.length) ? c.items : [{nom:catCanon(c.categorie), montant:c.total}];
+    (items||[]).forEach(it=>{
+      const cat = effectiveCat(c.categorie, it.nom);
+      const k = canonKey(cat);
+      if(!map[k]) map[k] = {total:0,label:catCanon(cat),items:[]};
+      map[k].total = addAmounts(map[k].total, parseAmount(it.montant));
+      map[k].items.push({nom:it.nom, montant:it.montant});
+    });
+  });
   depOps.forEach(o=>{
-    const k = canonKey(o.cat);
-    if(!map[k]) map[k] = {total:0,label:catCanon(o.cat),items:[]};
+    const cat = effectiveCat(o.cat, o.sub);
+    const k = canonKey(cat);
+    if(!map[k]) map[k] = {total:0,label:catCanon(cat),items:[]};
     map[k].total = addAmounts(map[k].total, o.amount);
     if(!map[k].userOps) map[k].userOps=[];
     map[k].userOps.push({label:o.label, amount:o.amount});
@@ -598,9 +616,10 @@ function livretExpenseMap(year, mk, externalOnly){
   epargneOps(year, mk).forEach(o=>{
     if(o.type!=='depense') return;
     if(externalOnly && isInterne(o)) return;
-    const k = canonKey(o.cat);
+    const cat = effectiveCat(o.cat, o.sub);
+    const k = canonKey(cat);
     const amt = o.montant || o.amount || 0;
-    if(!map[k]) map[k] = {total:0,label:catCanon(o.cat),items:[]};
+    if(!map[k]) map[k] = {total:0,label:catCanon(cat),items:[]};
     map[k].total = addAmounts(map[k].total, amt);
     map[k].items.push({
       nom: [o.date, o.label].filter(Boolean).join(' · '),
@@ -1170,7 +1189,7 @@ function buildExpenseSections(acc, mk){
       (importOps[year][mk]||[]).forEach(o=>{
         if(o.type!=='depense') return;
         if(accNorm==='tous' && isEpargneCatKey(norm(o.cat))) return;
-        put(o.cat||'Autre', o.sub||'Opérations', o.amount,
+        put(effectiveCat(o.cat,o.sub), o.sub||'Opérations', o.amount,
           {label:o.label, date:o.date, amount:o.amount, compte:'commun', horsBudget:isHorsBudget(o), ref:{kind:'import', id:o.id}});
       });
     } else {
@@ -1178,7 +1197,7 @@ function buildExpenseSections(acc, mk){
       (baseMonth.depenses||[]).forEach(c=>{
         if(accNorm==='tous' && isEpargneCatKey(norm(c.categorie))) return;
         (c.items||[]).forEach(it=>{
-          put(c.categorie, it.nom, parseAmount(it.montant),
+          put(effectiveCat(c.categorie, it.nom), it.nom, parseAmount(it.montant),
             {label:it.nom, date:'', amount:parseAmount(it.montant), compte:'commun', agg:true});
         });
       });
@@ -1187,7 +1206,7 @@ function buildExpenseSections(acc, mk){
     opsOfYear(year, mk).forEach((o,i)=>{
       if(o.type!=='depense') return;
       if(accNorm==='tous' && isEpargneCatKey(norm(o.cat))) return;
-      put(o.cat||'Autre', o.sub||'Opérations', o.amount,
+      put(effectiveCat(o.cat,o.sub), o.sub||'Opérations', o.amount,
         {label:o.label, date:o.date||'', amount:o.amount, compte:'commun', horsBudget:isHorsBudget(o), ref:{kind:'user', i}});
     });
   }
@@ -1198,14 +1217,14 @@ function buildExpenseSections(acc, mk){
     ((lm&&lm.operations)||[]).forEach((o,idx)=>{
       if(o.type!=='depense') return;
       if(accNorm==='tous' && isInterne(o)) return;
-      put(o.cat||'Autre', 'Opérations', o.montant||0,
+      put(effectiveCat(o.cat,o.sub), 'Opérations', o.montant||0,
         {label:o.label, date:o.date||'', amount:o.montant||0, compte:'livret', horsBudget:isHorsBudget(o), ref:{kind:'livret', idx}});
     });
     opsOfYear(year, mk).forEach((o,i)=>{
       if(o.type!=='depense') return;
       if((o.compte||'commun')!=='livret') return;
       if(accNorm==='tous' && isInterne(o)) return;
-      put(o.cat||'Autre', 'Opérations', o.amount,
+      put(effectiveCat(o.cat,o.sub), 'Opérations', o.amount,
         {label:o.label, date:o.date||'', amount:o.amount, compte:'livret', horsBudget:isHorsBudget(o), ref:{kind:'user', i}});
     });
   }
@@ -1382,15 +1401,20 @@ function catTotalsFor(year, monthNames, opts){
     const month = monthsArr.find(m=>m.mois===mk) || emptyMonth(mk);
     (month.depenses||[]).forEach(c=>{
       if(isBaseEpargne(c.categorie)) return; // épargne / virements internes non réels
-      const k = canonKey(c.categorie); if(!map[k]) map[k]={total:0,label:catCanon(c.categorie)};
-      map[k].total = addAmounts(map[k].total, parseAmount(c.total));
+      const items = (c.items && c.items.length) ? c.items : [{nom:catCanon(c.categorie), montant:c.total}];
+      (items||[]).forEach(it=>{
+        const cat = effectiveCat(c.categorie, it.nom);
+        const k = canonKey(cat); if(!map[k]) map[k]={total:0,label:catCanon(cat)};
+        map[k].total = addAmounts(map[k].total, parseAmount(it.montant));
+      });
     });
     (opsMap[mk]||[]).forEach(o=>{
       if(o.type!=='depense') return;
       if((o.compte||'commun')!=='commun') return;
       if(isEpargneOp(o)) return; // épargne / virements internes non réels
       if(excludeHB && isHorsBudget(o)) return; // gros mouvement écarté du budget
-      const k = canonKey(o.cat); if(!map[k]) map[k]={total:0,label:catCanon(o.cat)};
+      const cat = effectiveCat(o.cat, o.sub);
+      const k = canonKey(cat); if(!map[k]) map[k]={total:0,label:catCanon(cat)};
       map[k].total = addAmounts(map[k].total, o.amount);
     });
     // Les opérations importées du compte commun sont agrégées dans le mois de
@@ -1399,7 +1423,7 @@ function catTotalsFor(year, monthNames, opts){
       ((importOps[String(year)]||{})[mk]||[]).forEach(o=>{
         if(o.type!=='depense') return;
         if(!isHorsBudget(o)) return;
-        const k = canonKey(o.cat);
+        const k = canonKey(effectiveCat(o.cat, o.sub));
         if(map[k]) map[k].total = addAmounts(map[k].total, -o.amount);
       });
     }
@@ -1407,7 +1431,8 @@ function catTotalsFor(year, monthNames, opts){
       if(o.type!=='depense' || isInterne(o)) return;
       if(excludeHB && isHorsBudget(o)) return; // gros mouvement écarté du budget
       const amt = o.montant || o.amount || 0;
-      const k = canonKey(o.cat); if(!map[k]) map[k]={total:0,label:catCanon(o.cat)};
+      const cat = effectiveCat(o.cat, o.sub);
+      const k = canonKey(cat); if(!map[k]) map[k]={total:0,label:catCanon(cat)};
       map[k].total = addAmounts(map[k].total, amt);
     });
   });
@@ -2005,9 +2030,9 @@ function existingSubLabels(mode, catId){
     if(!Array.isArray(arr)) return;
     arr.forEach(m=>{
       if(mode==='depense'){
-        (m.depenses||[]).forEach(c=>{ if(matchCat(c.categorie)) (c.items||[]).forEach(it=>add(it.nom)); });
+        (m.depenses||[]).forEach(c=>{ (c.items||[]).forEach(it=>{ if(matchCat(effectiveCat(c.categorie, it.nom))) add(it.nom); }); });
       } else {
-        (m.revenus||[]).forEach(r=>{ if(matchCat(r.nom)) add(r.detail); });
+        (m.revenus||[]).forEach(r=>{ if(matchCat(effectiveCat(r.nom, r.detail))) add(r.detail); });
       }
     });
   });
@@ -2016,7 +2041,7 @@ function existingSubLabels(mode, catId){
     Object.values(yearMap||{}).forEach(arr=>{
       (arr||[]).forEach(o=>{
         if(o.type!==mode) return;
-        if(matchCat(o.cat)) add(o.sub);
+        if(matchCat(effectiveCat(o.cat, o.sub))) add(o.sub);
       });
     });
   });
@@ -2024,7 +2049,7 @@ function existingSubLabels(mode, catId){
   Object.keys(importOps).forEach(y=>Object.keys(importOps[y]||{}).forEach(mk=>{
     (importOps[y][mk]||[]).forEach(o=>{
       if(o.type!==mode) return;
-      if(matchCat(o.cat)) add(o.sub);
+      if(matchCat(effectiveCat(o.cat, o.sub))) add(o.sub);
     });
   }));
   // Opérations du Livret (épargne)
@@ -2032,7 +2057,7 @@ function existingSubLabels(mode, catId){
     (epargneData[y]||[]).forEach(m=>{
       (m.operations||[]).forEach(o=>{
         if(o.type!==mode) return;
-        if(matchCat(o.cat)) add(o.sub);
+        if(matchCat(effectiveCat(o.cat, o.sub))) add(o.sub);
       });
     });
   });
@@ -2432,19 +2457,19 @@ function catUsageCount(mode, id){
   let n = 0;
   Object.keys(baseData).forEach(y=>{
     (baseData[y]||[]).forEach(m=>{
-      if(mode==='depense') (m.depenses||[]).forEach(c=>{ if(canonKey(c.categorie)===k) n += (c.items||[]).length || 1; });
-      else (m.revenus||[]).forEach(r=>{ if(canonKey(r.nom)===k) n++; });
+      if(mode==='depense') (m.depenses||[]).forEach(c=>{ (c.items||[]).forEach(it=>{ if(canonKey(effectiveCat(c.categorie, it.nom))===k) n++; }); });
+      else (m.revenus||[]).forEach(r=>{ if(canonKey(effectiveCat(r.nom, r.detail))===k) n++; });
     });
   });
   Object.keys(importOps).forEach(y=>Object.keys(importOps[y]||{}).forEach(mk=>{
-    (importOps[y][mk]||[]).forEach(o=>{ if(o.type===mode && canonKey(o.cat)===k) n++; });
+    (importOps[y][mk]||[]).forEach(o=>{ if(o.type===mode && canonKey(effectiveCat(o.cat, o.sub))===k) n++; });
   }));
   Object.keys(userOps).forEach(y=>Object.keys(userOps[y]||{}).forEach(mk=>{
-    (userOps[y][mk]||[]).forEach(o=>{ if(o.type===mode && canonKey(o.cat)===k) n++; });
+    (userOps[y][mk]||[]).forEach(o=>{ if(o.type===mode && canonKey(effectiveCat(o.cat, o.sub))===k) n++; });
   }));
   Object.keys(epargneData).forEach(y=>{
     (epargneData[y]||[]).forEach(m=>{
-      (m.operations||[]).forEach(o=>{ if(o.type===mode && canonKey(o.cat)===k) n++; });
+      (m.operations||[]).forEach(o=>{ if(o.type===mode && canonKey(effectiveCat(o.cat, o.sub))===k) n++; });
     });
   });
   return n;
@@ -2503,7 +2528,7 @@ function moveSub(mode, catId, sub, targetId){
   const touched = new Set();   // mois importés touchés → à reconstruire ("y|mk")
   const apply = o => {
     if(o.type!==mode) return;
-    if(canonKey(o.cat)!==srcK) return;
+    if(canonKey(effectiveCat(o.cat, o.sub))!==srcK) return;
     if(catKey(o.sub||'')!==subK) return;
     o.cat = targetId;
     changed = true;
@@ -2513,7 +2538,7 @@ function moveSub(mode, catId, sub, targetId){
     let changedHere = false;
     (importOps[y][mk]||[]).forEach(o=>{
       if(o.type!==mode) return;
-      if(canonKey(o.cat)!==srcK) return;
+      if(canonKey(effectiveCat(o.cat, o.sub))!==srcK) return;
       if(catKey(o.sub||'')!==subK) return;
       o.cat = targetId; changed = true; changedHere = true;
     });
@@ -2542,7 +2567,7 @@ function deleteSub(mode, catId, sub){
   const touched = new Set();
   const apply = o => {
     if(o.type!==mode) return;
-    if(canonKey(o.cat)!==srcK) return;
+    if(canonKey(effectiveCat(o.cat, o.sub))!==srcK) return;
     if(catKey(o.sub||'')!==subK) return;
     o.sub = '';
     changed = true;
@@ -2552,7 +2577,7 @@ function deleteSub(mode, catId, sub){
     let changedHere = false;
     (importOps[y][mk]||[]).forEach(o=>{
       if(o.type!==mode) return;
-      if(canonKey(o.cat)!==srcK) return;
+      if(canonKey(effectiveCat(o.cat, o.sub))!==srcK) return;
       if(catKey(o.sub||'')!==subK) return;
       o.sub = ''; changed = true; changedHere = true;
     });
