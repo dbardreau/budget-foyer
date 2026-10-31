@@ -1986,11 +1986,8 @@ function existingSubLabels(mode, catId){
   const out = [];
   const seen = {};
   const add = x => { const n=String(x||'').trim(); if(!n) return; const k=norm(n); if(!seen[k]){ seen[k]=1; out.push(n); } };
-  const ck = norm(catId);
-  const matchCat = c => {
-    const k = norm(c);
-    return k===ck || (k.length && ck.length && (ck.includes(k) || k.includes(ck)));
-  };
+  const ck = canonKey(catId);
+  const matchCat = c => { try{ return canonKey(c)===ck; }catch(_){ return false; } };
   // Mois de base (toutes années)
   Object.keys(baseData).forEach(y=>{
     const arr = baseData[y];
