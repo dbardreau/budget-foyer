@@ -410,7 +410,13 @@ canvas{width:100%}
   /* ---- Sélecteur de mois : évite le chevauchement du bouton « Vider le mois » ---- */
   .month-selector{flex-wrap:wrap;gap:6px 10px;row-gap:4px}
   .month-selector h2{font-size:19px;min-width:0;padding:0 2px}
-  #btnClearMonth{position:static;transform:none;margin-left:0;order:10}
+  /* Le bouton « Vider le mois » passe sur sa propre ligne sous les flèches :
+     il ne chevauche plus jamais la flèche droite du mois. Spécificité
+     identique à la règle desktop pour bien la surpasser. */
+  .month-selector #btnClearMonth{
+    position:static;transform:none;margin-left:0;order:10;
+    flex:1 1 100%;max-width:100%;text-align:center;
+  }
 
   /* ---- Tableaux : défilement horizontal fluide ---- */
   .table-wrap{-webkit-overflow-scrolling:touch}
