@@ -346,3 +346,104 @@ canvas{width:100%}
   .heat-cell{height:22px;font-size:8px}
   .heat-total{font-size:10px}
 }
+
+/* ============================================================= */
+/* ===== RESPONSIVE MOBILE ===================================== */
+/* ===== Supprime les débordements horizontaux et resserre ==== */
+/* ===== la mise en page sur petit écran (téléphone). ========= */
+/* ============================================================= */
+
+@media(max-width:900px){
+  .content{padding:18px 14px}
+}
+
+@media(max-width:760px){
+  /* ---- Barre du haut ---- */
+  .topbar{padding:10px 12px;gap:10px;row-gap:10px;align-items:flex-start}
+  .brand{min-width:0;flex:1 1 auto;gap:10px}
+  .brand h1{font-size:17px;letter-spacing:0;line-height:1.2}
+  .brand .subtitle{font-size:11px}
+  .logo{width:40px;height:40px;font-size:20px}
+
+  /* ---- Barre d'actions : occupe toute la largeur, se met sur plusieurs lignes ---- */
+  .actions{
+    flex:1 1 100%;
+    margin-left:0;
+    gap:8px;
+    row-gap:8px;
+    justify-content:flex-start;
+  }
+  .actions .btn{padding:9px 12px;font-size:13px;white-space:nowrap}
+  .year-nav{margin-left:auto}
+
+  /* ---- Onglets : une seule rangée défilante horizontale (aucun débordement) ---- */
+  .tabs{
+    flex:1 1 100%;
+    flex-wrap:nowrap;
+    justify-content:flex-start;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    gap:6px;
+    padding:2px;
+    scrollbar-width:none;               /* Firefox */
+    margin:2px 0 2px;
+  }
+  .tabs::-webkit-scrollbar{display:none} /* Chrome / Safari */
+  .tab{flex:0 0 auto;white-space:nowrap;padding:10px 14px;font-size:14px}
+
+  /* ---- Écrans / cartes / titres ---- */
+  .card{padding:16px}
+  .card h3{font-size:14px}
+  /* Autorise les cartes (grilles 2 colonnes) à rétrécir sous la largeur
+     minimale de leur contenu : la heatmap et le treemap défilent alors
+     dans leur carte au lieu de faire déborder la page. */
+  .grid2 > .card{min-width:0}
+  /* Force la heatmap à rester dans sa carte et à défiler horizontalement.
+     On supprime le min-width poussé sur le conteneur (il annulerait la
+     contrainte de largeur) et on le reporte sur les lignes, qui défilent
+     alors dans la carte au lieu de faire déborder la page. */
+  #chartHeat{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .heat{min-width:0 !important}
+  .heat-row{min-width:560px}
+  .sankey-wrap{width:100%;max-width:100%}
+
+  /* ---- Sélecteur de mois : évite le chevauchement du bouton « Vider le mois » ---- */
+  .month-selector{flex-wrap:wrap;gap:6px 10px;row-gap:4px}
+  .month-selector h2{font-size:19px;min-width:0;padding:0 2px}
+  #btnClearMonth{position:static;transform:none;margin-left:0;order:10}
+
+  /* ---- Tableaux : défilement horizontal fluide ---- */
+  .table-wrap{-webkit-overflow-scrolling:touch}
+  .table{font-size:13px}
+  .table th,.table td{padding:8px 9px;white-space:nowrap}
+
+  /* ---- Barres « Top catégories » : le libellé passe sur sa propre ligne ---- */
+  .tcat{flex-wrap:wrap;row-gap:6px;gap:10px}
+  .tcat .bar-label{flex:1 1 100%;min-width:0 !important;font-size:13px}
+  .tcat .bar-wrap{flex:1 1 auto}
+  .tcat .pct{width:auto;min-width:40px;font-size:12px}
+
+  /* ---- Champs : 16px min pour éviter le zoom automatique iOS au focus ---- */
+  .field input,.field select,.login-box input{font-size:16px}
+
+  /* ---- Modales ---- */
+  .modal-head{padding:14px 16px}
+  #addForm{padding:16px}
+  #importModal .import-results{margin:6px 14px 0}
+}
+
+@media(max-width:480px){
+  .kpis{grid-template-columns:1fr}
+  .month-kpis{grid-template-columns:1fr}
+  .actions .btn{flex:1 1 auto}
+  .brand{min-width:0}
+  .logout-wide .btn{font-size:12px}
+  .donut-wrap{flex-direction:column;align-items:stretch}
+}
+
+/* iPhone très étroits */
+@media(max-width:360px){
+  .actions{justify-content:stretch}
+  .actions .btn{flex:1 1 46%}
+  .year-nav{margin-left:0}
+}
