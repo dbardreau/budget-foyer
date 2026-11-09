@@ -9,6 +9,20 @@ const MONTHS = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout'
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
 
+/* Version de l'application : lue dans le paramètre ?v= du <script src="app.js?v=…">.
+   Publier.ps1 met cette valeur à jour à chaque publication, ce qui force le
+   navigateur à recharger les fichiers (sinon il garde l'ancienne version en cache). */
+const APP_VERSION = (function(){
+  const s = document.currentScript;
+  const m = (s && s.src) ? s.src.match(/[?&]v=([^&]+)/) : null;
+  return m ? m[1] : '';
+})();
+function appVersionLabel(){
+  const v = APP_VERSION;
+  const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(v);
+  return m ? 'version du ' + m[3] + '/' + m[2] + '/' + m[1] + ' à ' + m[4] + 'h' + m[5] : '';
+}
+
 let BASE = Array.isArray(window.BUDGET2026) ? window.BUDGET2026 : [];
 /* Données de base par année : baseData = { "2026": [12 mois], "2027": [...] , … } */
 let baseData = {};
@@ -351,6 +365,7 @@ async function initStorage(){
     online = true;
   }catch(e){ online = false; }
   updateSyncBadge();
+  setYearMeta();
 }
 
 /* Opérations d'une année (objet mois -> liste) avec création implicite */
@@ -381,6 +396,7 @@ function setYearMeta(){  const y = String(state.year);
   const el = document.getElementById('yearLabel'); if(el) el.textContent = y;
   const hd = document.getElementById('hdYear');  if(hd) hd.textContent = y;
   const dt = document.getElementById('donutYear'); if(dt) dt.textContent = y;
+  const av = document.getElementById('appVer'); if(av) av.textContent = appVersionLabel();
   document.title = 'Budget Foyer ' + y;
 }
 
@@ -3168,9 +3184,30 @@ function processImportFiles(fileList){
     renderImportResults(perFile, communs, livrets);
     switchTab(state.tab);
     showToast('Import terminé ✔ (' + ops.length + ' opérations)');
+    startImportAutoClose(3);
   }).catch(err=>{
     if(results) results.innerHTML = '<div class="neg">Erreur : ' + e(err && err.message ? err.message : 'fichier illisible') + '</div>';
   });
+}
+
+/* Fermeture automatique de la fenêtre d'import une fois l'import réussi. */
+let importAutoCloseTimer = null;
+function stopImportAutoClose(){
+  if(importAutoCloseTimer){ clearInterval(importAutoCloseTimer); importAutoCloseTimer = null; }
+  const note = document.getElementById('importAutoClose');
+  if(note) note.textContent = '';
+}
+function startImportAutoClose(seconds){
+  stopImportAutoClose();
+  const note = document.getElementById('importAutoClose');
+  let left = seconds;
+  const affiche = ()=>{ if(note) note.textContent = 'Cette fenêtre se fermera automatiquement dans ' + left + ' s.'; };
+  affiche();
+  importAutoCloseTimer = setInterval(()=>{
+    left--;
+    if(left <= 0){ stopImportAutoClose(); closeImportModal(); return; }
+    affiche();
+  }, 1000);
 }
 
 function renderImportResults(perFile, communs, livrets){
@@ -3204,10 +3241,11 @@ function openImportModal(){
   const fi = document.getElementById('importFiles');
   const box = document.getElementById('importResults');
   if(fi) fi.value='';
+  stopImportAutoClose();
   if(box) box.innerHTML = '<div class="muted">Choisis ton/tes export(s) Boursorama puis clique sur « Importer ».</div>';
   if(m) m.classList.remove('hidden');
 }
-function closeImportModal(){ const m=document.getElementById('importModal'); if(m) m.classList.add('hidden'); }
+function closeImportModal(){ stopImportAutoClose(); const m=document.getElementById('importModal'); if(m) m.classList.add('hidden'); }
 function runImportNow(){
   const fi = document.getElementById('importFiles');
   processImportFiles(fi && fi.files);

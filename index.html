@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Budget Foyer</title>
 <meta name="color-scheme" content="dark">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20261109161339">
 </head>
 <body>
 
@@ -30,7 +30,7 @@
     <div class="logo">€</div>
     <div>
       <h1>Budget Foyer</h1>
-      <span class="subtitle">Gestion des finances · <span id="hdYear">2026</span></span>
+      <span class="subtitle">Gestion des finances · <span id="hdYear">2026</span> · <span id="appVer"></span></span>
     </div>
   </div>
   <nav class="tabs">
@@ -328,6 +328,7 @@
     <div id="importResults" class="import-results">
       <div class="muted">Choisis ton/tes export(s) puis clique sur « Importer ».</div>
     </div>
+    <div id="importAutoClose" class="muted" style="font-size:12px;text-align:center"></div>
     <div class="modal-foot">
       <button type="button" id="importCancel" class="btn ghost">Annuler</button>
       <button type="button" id="importRun" class="btn primary">Importer</button>
@@ -399,8 +400,8 @@
 
 </div>
 
-<script src="data.js"></script>
-<script src="data-epargne.js"></script>
-<script src="app.js"></script>
+<script src="data.js?v=20261109161339"></script>
+<script src="data-epargne.js?v=20261109161339"></script>
+<script src="app.js?v=20261109161339"></script>
 </body>
 </html>

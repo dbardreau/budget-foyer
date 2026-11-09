@@ -51,6 +51,20 @@ Write-Host "   PUBLICATION DU SITE BUDGET FOYER" -ForegroundColor Cyan
 Write-Host "  ==========================================" -ForegroundColor DarkGray
 Write-Host ""
 
+# --- 0. Anti-cache : nouvelle version des fichiers CSS/JS ---
+# Met a jour les parametres ?v=... de index.html : le navigateur est ainsi
+# force a recharger app.js et style.css au lieu de garder l'ancienne version
+# en cache (c'est ce qui faisait croire que les corrections ne marchaient pas).
+$indexPath = Join-Path $repo 'index.html'
+if (Test-Path $indexPath) {
+    $version = Get-Date -Format 'yyyyMMddHHmmss'
+    $html = [System.IO.File]::ReadAllText($indexPath, [System.Text.Encoding]::UTF8)
+    $html = [regex]::Replace($html, '\?v=[0-9A-Za-z]+', '?v=' + $version)
+    [System.IO.File]::WriteAllText($indexPath, $html, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "  Version des fichiers : $version" -ForegroundColor DarkGray
+    Write-Host ""
+}
+
 # --- 1. Que faut-il publier ? ---
 $etat = Invoke-Git -Arguments @('status', '--porcelain')
 $lignes = @($etat.Sortie | ForEach-Object { "$_" } | Where-Object { $_.Trim() -ne '' })
